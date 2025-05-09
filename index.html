@@ -196,7 +196,7 @@
         let worldOffsetX = 0;
         let player = {}, humanoids = [], enemies = [], projectiles = { player: [], enemy: [] }, particles = [], stars = [];
         let keys = {};
-        let isFirstEverStart = true; // Flag for initial game start sound
+        let isFirstEverStart = true;
 
         let scoreUI, livesUI, bombsUI, shieldFillUI, waveUI, radarDiv;
         let messageOverlay, mainMessageTitle, secondaryMessageContent;
@@ -207,40 +207,40 @@
         let synthPlayerShoot, synthEnemyShoot, synthExplosionNoise, synthExplosionRumbleEnv, synthExplosionClick, synthPlayerHit, synthShieldOn, synthShieldOff, synthHyperspaceEnter, synthHyperspaceExit, synthRescue, synthAbduct, synthWaveClear, synthGameOver, synthGameStart, synthShieldHit;
 
         function initializeAudio() {
-            if (audioInitialized) return;
-            Tone.start().then(() => {
-                synthPlayerShoot = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }, volume: -18 }).toDestination();
-                synthPlayerShoot.frequency.setValueAtTime("C5", Tone.now());
-                synthPlayerShoot.frequency.linearRampToValueAtTime("C4", Tone.now() + 0.08);
+            if (audioInitialized) return Promise.resolve();
+            if (Tone.context.state !== 'running') {
+                console.log("Audio Context not running, attempting Tone.start()");
+                return Tone.start().then(() => {
+                    console.log("Tone.start() successful, initializing synths...");
+                    Tone.Transport.start(); // **Start the Transport for scheduling**
 
-                // Enemy Shoot Synth (PolySynth) - **Volume Adjusted Further**
-                synthEnemyShoot = new Tone.PolySynth(Tone.Synth, {
-                    polyphony: 4, voice: Tone.Synth,
-                    options: {
-                        oscillator: { type: 'sawtooth' },
-                        envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 },
-                        volume: -32 // **Reduced Volume Further**
-                    }
-                }).toDestination();
+                    synthPlayerShoot = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }, volume: -18 }).toDestination();
+                    synthPlayerShoot.frequency.setValueAtTime("C5", Tone.now());
+                    synthPlayerShoot.frequency.linearRampToValueAtTime("C4", Tone.now() + 0.08);
 
-                // Explosion Synth Components
-                const lowOsc = new Tone.Oscillator("C1", "sine").start();
-                synthExplosionRumbleEnv = new Tone.AmplitudeEnvelope({ attack: 0.02, decay: 0.4, sustain: 0.1, release: 0.5 }).toDestination();
-                lowOsc.connect(synthExplosionRumbleEnv);
-                lowOsc.volume.value = -3;
-                synthExplosionNoise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 } }).toDestination();
-                synthExplosionNoise.volume.value = -8;
-                synthExplosionClick = new Tone.NoiseSynth({ noise: { type: 'white'}, envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.02} }).toDestination();
-                synthExplosionClick.volume.value = -15;
+                    synthEnemyShoot = new Tone.PolySynth(Tone.Synth, { polyphony: 4, voice: Tone.Synth, options: { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 }, volume: -32 } }).toDestination();
 
-                // Other Synths (Minified)
-                synthPlayerHit=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.005,decay:.1,sustain:0,release:.1}}).connect(new Tone.PitchShift({pitch:-12}).toDestination());synthPlayerHit.volume.value=-8;synthShieldOn=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.1,decay:.01,sustain:.1,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.1,decay:.01,sustain:1,release:.1}}).toDestination();synthShieldOn.volume.value=-12;synthShieldOff=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.01,decay:.1,sustain:.01,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.01,decay:.1,sustain:1,release:.1}}).toDestination();synthShieldOff.volume.value=-12;synthHyperspaceEnter=new Tone.MonoSynth({oscillator:{type:"sawtooth"},filter:{Q:2,type:"lowpass",rolloff:-24},envelope:{attack:.1,decay:.1,sustain:.3,release:.5},filterEnvelope:{attack:.05,decay:.1,sustain:.1,release:.5,baseFrequency:200,octaves:3}}).toDestination();synthHyperspaceEnter.volume.value=-10;synthHyperspaceExit=new Tone.MonoSynth({oscillator:{type:"square"},filter:{Q:1,type:"bandpass",rolloff:-12},envelope:{attack:.01,decay:.2,sustain:0,release:.1},filterEnvelope:{attack:.01,decay:.1,sustain:0,release:.1,baseFrequency:500,octaves:2}}).toDestination();synthHyperspaceExit.volume.value=-10;synthRescue=new Tone.MetalSynth({frequency:400,envelope:{attack:.001,decay:.2,release:.1},harmonicity:3.1,modulationIndex:16,resonance:4e3,octaves:1.5}).toDestination();synthRescue.volume.value=-8;synthAbduct=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.3,sustain:.1,release:.2}}).toDestination();synthAbduct.volume.value=-15;synthWaveClear=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'pulse',width:.2},envelope:{attack:.01,decay:.1,sustain:.2,release:.2}}).toDestination();synthWaveClear.volume.value=-10;synthGameOver=new Tone.MonoSynth({oscillator:{type:"fatsawtooth",count:3,spread:30},envelope:{attack:.1,decay:.5,sustain:.1,release:1}}).toDestination();synthGameOver.volume.value=-5;synthGameStart=new Tone.PolySynth(Tone.Synth,{oscillator:{type:"triangle8"},envelope:{attack:.02,decay:.2,sustain:.3,release:.4},volume:-8}).toDestination();synthShieldHit=new Tone.MembraneSynth({pitchDecay:.008,octaves:2,envelope:{attack:.001,decay:.2,sustain:0,release:.1}}).toDestination();synthShieldHit.volume.value=-15;
+                    const lowOsc = new Tone.Oscillator("C1", "sine").start();
+                    synthExplosionRumbleEnv = new Tone.AmplitudeEnvelope({ attack: 0.02, decay: 0.4, sustain: 0.1, release: 0.5 }).toDestination();
+                    lowOsc.connect(synthExplosionRumbleEnv); lowOsc.volume.value = -3;
 
-                audioInitialized = true;
-                console.log("Audio Initialized.");
-            }).catch(e => {
-                console.error("Audio initialization failed:", e);
-            });
+                    // Using single instances again, but will trigger with Tone.Transport.scheduleOnce
+                    synthExplosionNoise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }, volume: -10 }).toDestination();
+                    synthExplosionClick = new Tone.NoiseSynth({ noise: { type: 'white'}, envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.02}, volume: -18 }).toDestination();
+
+
+                    synthPlayerHit=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.005,decay:.1,sustain:0,release:.1}}).connect(new Tone.PitchShift({pitch:-12}).toDestination());synthPlayerHit.volume.value=-8;synthShieldOn=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.1,decay:.01,sustain:.1,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.1,decay:.01,sustain:1,release:.1}}).toDestination();synthShieldOn.volume.value=-12;synthShieldOff=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.01,decay:.1,sustain:.01,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.01,decay:.1,sustain:1,release:.1}}).toDestination();synthShieldOff.volume.value=-12;synthHyperspaceEnter=new Tone.MonoSynth({oscillator:{type:"sawtooth"},filter:{Q:2,type:"lowpass",rolloff:-24},envelope:{attack:.1,decay:.1,sustain:.3,release:.5},filterEnvelope:{attack:.05,decay:.1,sustain:.1,release:.5,baseFrequency:200,octaves:3}}).toDestination();synthHyperspaceEnter.volume.value=-10;synthHyperspaceExit=new Tone.MonoSynth({oscillator:{type:"square"},filter:{Q:1,type:"bandpass",rolloff:-12},envelope:{attack:.01,decay:.2,sustain:0,release:.1},filterEnvelope:{attack:.01,decay:.1,sustain:0,release:.1,baseFrequency:500,octaves:2}}).toDestination();synthHyperspaceExit.volume.value=-10;synthRescue=new Tone.MetalSynth({frequency:400,envelope:{attack:.001,decay:.2,release:.1},harmonicity:3.1,modulationIndex:16,resonance:4e3,octaves:1.5}).toDestination();synthRescue.volume.value=-8;synthAbduct=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.3,sustain:.1,release:.2}}).toDestination();synthAbduct.volume.value=-15;synthWaveClear=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'pulse',width:.2},envelope:{attack:.01,decay:.1,sustain:.2,release:.2}}).toDestination();synthWaveClear.volume.value=-10;synthGameOver=new Tone.MonoSynth({oscillator:{type:"fatsawtooth",count:3,spread:30},envelope:{attack:.1,decay:.5,sustain:.1,release:1}}).toDestination();synthGameOver.volume.value=-5;synthGameStart=new Tone.PolySynth(Tone.Synth,{oscillator:{type:"triangle8"},envelope:{attack:.02,decay:.2,sustain:.3,release:.4},volume:-8}).toDestination();synthShieldHit=new Tone.MembraneSynth({pitchDecay:.008,octaves:2,envelope:{attack:.001,decay:.2,sustain:0,release:.1}}).toDestination();synthShieldHit.volume.value=-15;
+
+                    audioInitialized = true;
+                    console.log("Audio Initialized after Tone.start(). Transport started.");
+                }).catch(e => {
+                    console.error("Tone.start() failed:", e);
+                    return Promise.reject(e);
+                });
+            } else {
+                 console.log("Audio context already running or initialized.");
+                 return Promise.resolve();
+            }
         }
 
         // --- Utility Functions ---
@@ -270,19 +270,29 @@
         };
 
         function handleActionButtonClick() {
-            if (!audioInitialized) { initializeAudio(); }
-            if (!gameRunning || gameOverState) {
-                // Determine if we should play the start sound
-                let playStartSound = isFirstEverStart || gameOverState;
+            initializeAudio().then(() => {
+                if (!gameRunning || gameOverState) {
+                    let playStartSound = isFirstEverStart || gameOverState;
 
-                if (gameOverState) { resetGame(); } // Reset fully on game over
-                else if (mainMessageTitle.textContent.includes("Cleared")) { resetGame(true); } // Reset for next wave
-                else if (isFirstEverStart) { resetGame(); } // Reset fully on initial start
+                    if (gameOverState) { resetGame(); }
+                    else if (mainMessageTitle.textContent.includes("Cleared")) { resetGame(true); }
+                    else if (isFirstEverStart) { resetGame(); }
 
-                startGame(playStartSound); // Pass the flag
+                    startGame(playStartSound);
+                }
+            }).catch(err => {
+                 console.error("Cannot start game due to audio init failure:", err);
+            });
+        }
+        function handleGlobalKeys(e) {
+            if (e.code === 'Enter') {
+                 initializeAudio().then(() => {
+                     handleActionButtonClick();
+                 }).catch(err => {
+                    console.error("Cannot start game via Enter key due to audio init failure:", err);
+                 });
             }
         }
-        function handleGlobalKeys(e) { /* Minified v2.13 */ if(e.code==='Enter'){if(!audioInitialized){initializeAudio()}handleActionButtonClick()} }
         function showStartScreen() { /* Minified v2.13 */ mainMessageTitle.textContent="Defender Ascendant";secondaryMessageContent.innerHTML=`Save the Humanoids!\n\nControls:\nArrows or A/W/S/D: Move Ship\nSpace or Ctrl: Shoot\nShift: Activate Shield\nB: Smart Bomb\nH: Hyperspace`;actionButtonMainText.textContent="Start";actionButtonSubtext.textContent="or press Enter";messageOverlay.style.display='flex';gameOverState=false;gameRunning=false; }
 
         function startGame(playStartSound = false) {
@@ -292,20 +302,19 @@
                 messageOverlay.style.display = 'none';
                 if (!player.worldX && player.worldX !== 0) { resetGame(); }
 
-                // Play start sound only if flag is true and synth is ready
                 if (audioInitialized && synthGameStart && playStartSound) {
-                     // Add a small delay before playing the sound
-                     setTimeout(() => {
-                         const now = Tone.now();
-                         synthGameStart.triggerAttackRelease("C4", "8n", now);
-                         synthGameStart.triggerAttackRelease("G4", "8n", now + 0.15);
-                         synthGameStart.triggerAttackRelease("C5", "4n", now + 0.3);
-                     }, 100); // 100ms delay
-                     isFirstEverStart = false; // Set flag to false after first play attempt
+                     const now = Tone.now();
+                     // Schedule with Tone.Transport to ensure it plays after context is fully ready
+                     Tone.Transport.scheduleOnce(time => {
+                        synthGameStart.triggerAttackRelease("C4", "8n", time);
+                        synthGameStart.triggerAttackRelease("G4", "8n", time + 0.15);
+                        synthGameStart.triggerAttackRelease("C5", "4n", time + 0.3);
+                     }, now + 0.05); // Small delay after Tone.now()
+                     isFirstEverStart = false;
                 }
             }
         }
-        function resetGame(isNewWave = false) { /* Minified v2.13 */ if(!isNewWave){score=0;lives=3;smartBombs=3;currentWave=1; isFirstEverStart = true;}player={type:'player',worldX:PLANET_WIDTH/2,y:GROUND_LEVEL-PLAYER_HEIGHT-50,width:PLAYER_WIDTH,height:PLAYER_HEIGHT,vx:0,vy:0,facingDirection:1,color:'#00FF00',shieldEnergy:PLAYER_MAX_SHIELD_ENERGY,isShieldActive:false,shieldActivationTime:0,lastShotTime:0,isInvulnerable:false,invulnerabilityTimer:0,lastHyperspaceTime:0,hyperspaceActive:false};projectiles.player=[];projectiles.enemy=[];enemies=[];humanoids=[];particles=[];worldOffsetX=(player.worldX-CANVAS_WIDTH/2+PLANET_WIDTH)%PLANET_WIDTH;spawnHumanoids();spawnWaveEnemies();updateUI(); } // Reset isFirstEverStart on full reset
+        function resetGame(isNewWave = false) { /* Minified v2.13 */ if(!isNewWave){score=0;lives=3;smartBombs=3;currentWave=1; isFirstEverStart = true;}player={type:'player',worldX:PLANET_WIDTH/2,y:GROUND_LEVEL-PLAYER_HEIGHT-50,width:PLAYER_WIDTH,height:PLAYER_HEIGHT,vx:0,vy:0,facingDirection:1,color:'#00FF00',shieldEnergy:PLAYER_MAX_SHIELD_ENERGY,isShieldActive:false,shieldActivationTime:0,lastShotTime:0,isInvulnerable:false,invulnerabilityTimer:0,lastHyperspaceTime:0,hyperspaceActive:false};projectiles.player=[];projectiles.enemy=[];enemies=[];humanoids=[];particles=[];worldOffsetX=(player.worldX-CANVAS_WIDTH/2+PLANET_WIDTH)%PLANET_WIDTH;spawnHumanoids();spawnWaveEnemies();updateUI(); }
         function createStars() { /* Minified */ stars=[];for(let i=0;i<STAR_COUNT;i++){stars.push({x:random(0,CANVAS_WIDTH),y:random(0,CANVAS_HEIGHT),size:random(.5,2),parallax:random(.1,.5)})} }
         function spawnHumanoids() { /* Minified */ const count=HUMANOID_COUNT_PER_WAVE_MULTIPLIER;humanoids=[];for(let i=0;i<count;i++){humanoids.push({type:'humanoid',worldX:random(0,PLANET_WIDTH),y:GROUND_LEVEL-HUMANOID_HEIGHT,width:HUMANOID_WIDTH,height:HUMANOID_HEIGHT,color:'#FFFFFF',isAbducted:false,abductor:null,isFalling:false,isSafe:true})} }
         function spawnWaveEnemies() { /* Minified */ enemies=[];const landerCount=3+currentWave*2;for(let i=0;i<landerCount;i++){enemies.push({type:'Lander',worldX:random(0,PLANET_WIDTH),y:random(50,CANVAS_HEIGHT/2),width:LANDER_WIDTH,height:LANDER_HEIGHT,vx:0,vy:0,color:'#FF0000',targetHuman:null,isCarryingHuman:false,state:'patrolling',stateTimer:random(1e3,3e3)})} }
@@ -320,7 +329,23 @@
         function updateHumanoids(dt){ /* Minified */ humanoids.forEach(h=>{if(h.isFalling){h.y+=HUMANOID_FALL_SPEED;if(h.y>=GROUND_LEVEL-h.height){h.y=GROUND_LEVEL-h.height;h.isFalling=false;h.isSafe=true;}}});}
         function updateParticles(dt){ /* Minified */ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}if(p.type==='explosion_flash'){p.radius=p.maxRadius*(1-(p.life/p.initialLife));p.alpha=0.8*(p.life/p.initialLife);}else{p.vy+=0.05;p.vx*=0.99;if(typeof p.worldX !=='undefined'){p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;}else{p.x+=p.vx;}p.y+=p.vy;p.alpha=p.life/p.initialLife;}}}
         function createParticleEffect(x,y,color,count,speedRange,isScreenSpace=false, life = EXPLOSION_PARTICLE_LIFE, particleType = 'debris'){ /* Minified */ for(let i=0;i<count;i++){let p={y:y,vx:random(-speedRange,speedRange),vy:random(-speedRange-1,speedRange-3),size:random(1,4),color:color,life:random(life*0.5,life),initialLife:life, alpha:1.0, type: particleType};if(isScreenSpace){p.x=x;}else{p.worldX=x;}particles.push(p);}}
-        function createExplosion(worldX, y, baseColor) { /* Minified v2.13 */ const now=Tone.now();const slightOffset1=.005;const slightOffset2=.01;if(audioInitialized){if(synthExplosionClick)synthExplosionClick.triggerAttackRelease(.03,now);if(synthExplosionNoise)synthExplosionNoise.triggerAttackRelease(.4,now+slightOffset1);if(synthExplosionRumbleEnv){synthExplosionRumbleEnv.triggerAttackRelease(.5,now+slightOffset2)}}particles.push({type:'explosion_flash',worldX:worldX,y:y,radius:0,maxRadius:EXPLOSION_FLASH_MAX_RADIUS,color:'rgba(255,255,200,0.9)',life:EXPLOSION_FLASH_DURATION,initialLife:EXPLOSION_FLASH_DURATION,alpha:0.9});const colors=[baseColor,'#FFA500','#FF4500','#FFD700'];for(let i=0;i<EXPLOSION_PARTICLE_COUNT;i++){particles.push({type:'debris',worldX:worldX,y:y,vx:random(-5,5),vy:random(-6,1),size:random(2,5),color:colors[Math.floor(random(0,colors.length))],life:random(EXPLOSION_PARTICLE_LIFE*.7,EXPLOSION_PARTICLE_LIFE),initialLife:EXPLOSION_PARTICLE_LIFE,alpha:1.0});}}
+
+        function createExplosion(worldX, y, baseColor) {
+             if (!audioInitialized) return;
+
+             // Schedule the sound events slightly in the future to avoid exact same-time conflicts
+             // Using Tone.Transport.scheduleOnce for more reliable scheduling in rapid succession.
+             Tone.Transport.scheduleOnce(time => {
+                 if (synthExplosionClick) synthExplosionClick.triggerAttackRelease("32n", time);
+                 if (synthExplosionNoise) synthExplosionNoise.triggerAttackRelease("8n", time + 0.01); // Stagger slightly
+                 if (synthExplosionRumbleEnv) synthExplosionRumbleEnv.triggerAttackRelease(0.5, time + 0.02); // Stagger slightly more
+             }, Tone.now() + 0.001); // Schedule this whole explosion event a tiny bit in the future from "now"
+
+             // Visual particles
+             particles.push({type:'explosion_flash',worldX:worldX,y:y,radius:0,maxRadius:EXPLOSION_FLASH_MAX_RADIUS,color:'rgba(255,255,200,0.9)',life:EXPLOSION_FLASH_DURATION,initialLife:EXPLOSION_FLASH_DURATION,alpha:0.9});
+             const colors=[baseColor,'#FFA500','#FF4500','#FFD700'];
+             for(let i=0;i<EXPLOSION_PARTICLE_COUNT;i++){particles.push({type:'debris',worldX:worldX,y:y,vx:random(-5,5),vy:random(-6,1),size:random(2,5),color:colors[Math.floor(random(0,colors.length))],life:random(EXPLOSION_PARTICLE_LIFE*.7,EXPLOSION_PARTICLE_LIFE),initialLife:EXPLOSION_PARTICLE_LIFE,alpha:1.0});}
+         }
 
         function collisionDetection(){ /* Minified v2.17 */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;const pCX=worldToCanvasX(player.worldX),pRect={x:pCX,y:player.y,width:player.width,height:player.height};const shieldRadius=player.width*SHIELD_RADIUS_MULTIPLIER;const shieldCircle={x:pCX+player.width/2,y:player.y+player.height/2,radius:shieldRadius};for(let i=projectiles.player.length-1;i>=0;i--){let p=projectiles.player[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(rectIntersect(pR,eR)){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=(e.type==='Lander'?LANDER_POINTS:MUTANT_POINTS);projectiles.player.splice(i,1);if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(j,1);break}}}for(let i=projectiles.enemy.length-1;i>=0;i--){let p=projectiles.enemy[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,pR)){createParticleEffect(p.worldX,p.y,'#00FFFF',5,2,false,100,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("C5","16n");projectiles.enemy.splice(i,1)}else if(!player.isInvulnerable&&rectIntersect(pR,pRect)){projectiles.enemy.splice(i,1);playerHit();break}}for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,eR)){if(e.type==='Lander'){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=SHIELD_MINOR_ENEMY_DESTROY_SCORE;if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(i,1);if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("A4","16n")}else{createParticleEffect(e.worldX,e.y,'#00FFFF',8,3,false,150,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("E4","16n")}}else if(!player.isInvulnerable&&rectIntersect(pRect,eR)){if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}playerHit();enemies.splice(i,1);break}}for(let i=humanoids.length-1;i>=0;i--){let h=humanoids[i];if(!h)continue;if(h.isFalling){const hR={x:worldToCanvasX(h.worldX),y:h.y,width:h.width,height:h.height};if(rectIntersect(pRect,hR)){h.isFalling=false;h.y=GROUND_LEVEL-h.height;h.isSafe=true;score+=HUMANOID_RESCUE_POINTS;if(audioInitialized&&synthRescue)synthRescue.triggerAttackRelease("A5","8n");createParticleEffect(player.worldX,player.y,'#00FF00',10,3,false,200,'rescue_flash')}}}}
         function rectIntersect(r1,r2){ /* Minified */ return!(r2.x>r1.x+r1.width||r2.x+r2.width<r1.x||r2.y>r1.y+r1.height||r2.y+r2.height<r1.y);}
