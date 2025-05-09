@@ -212,7 +212,10 @@
                 console.log("Audio Context not running, attempting Tone.start()");
                 return Tone.start().then(() => {
                     console.log("Tone.start() successful, initializing synths...");
-                    Tone.Transport.start(); // **Start the Transport for scheduling**
+                    if (Tone.Transport.state !== "started") { // Ensure transport is started only once
+                        Tone.Transport.start();
+                        console.log("Tone.Transport started.");
+                    }
 
                     synthPlayerShoot = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }, volume: -18 }).toDestination();
                     synthPlayerShoot.frequency.setValueAtTime("C5", Tone.now());
@@ -220,11 +223,11 @@
 
                     synthEnemyShoot = new Tone.PolySynth(Tone.Synth, { polyphony: 4, voice: Tone.Synth, options: { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 }, volume: -32 } }).toDestination();
 
-                    const lowOsc = new Tone.Oscillator("C1", "sine").start();
+                    const lowOsc = new Tone.Oscillator("C1", "sine").start(); // Start immediately, envelope controls volume
                     synthExplosionRumbleEnv = new Tone.AmplitudeEnvelope({ attack: 0.02, decay: 0.4, sustain: 0.1, release: 0.5 }).toDestination();
                     lowOsc.connect(synthExplosionRumbleEnv); lowOsc.volume.value = -3;
 
-                    // Using single instances again, but will trigger with Tone.Transport.scheduleOnce
+                    // **FIXED HERE: Explosion Noise Synths are single instances**
                     synthExplosionNoise = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }, volume: -10 }).toDestination();
                     synthExplosionClick = new Tone.NoiseSynth({ noise: { type: 'white'}, envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.02}, volume: -18 }).toDestination();
 
@@ -270,14 +273,15 @@
         };
 
         function handleActionButtonClick() {
-            initializeAudio().then(() => {
+            initializeAudio().then(() => { // Ensure audio is ready before proceeding
                 if (!gameRunning || gameOverState) {
                     let playStartSound = isFirstEverStart || gameOverState;
 
                     if (gameOverState) { resetGame(); }
                     else if (mainMessageTitle.textContent.includes("Cleared")) { resetGame(true); }
-                    else if (isFirstEverStart) { resetGame(); }
-
+                    else if (isFirstEverStart) { // Only reset fully if it's the very first time
+                        resetGame();
+                    }
                     startGame(playStartSound);
                 }
             }).catch(err => {
@@ -300,7 +304,10 @@
                 gameRunning = true;
                 gameOverState = false;
                 messageOverlay.style.display = 'none';
-                if (!player.worldX && player.worldX !== 0) { resetGame(); }
+                // Ensure player is initialized if starting for the first time this session
+                if (!player.worldX && player.worldX !== 0) {
+                    resetGame(); // This will also set isFirstEverStart to true
+                }
 
                 if (audioInitialized && synthGameStart && playStartSound) {
                      const now = Tone.now();
@@ -309,8 +316,8 @@
                         synthGameStart.triggerAttackRelease("C4", "8n", time);
                         synthGameStart.triggerAttackRelease("G4", "8n", time + 0.15);
                         synthGameStart.triggerAttackRelease("C5", "4n", time + 0.3);
-                     }, now + 0.05); // Small delay after Tone.now()
-                     isFirstEverStart = false;
+                     }, now + 0.05); // Small delay to ensure transport is definitely running
+                     isFirstEverStart = false; // Set to false after the first fanfare plays
                 }
             }
         }
@@ -323,25 +330,35 @@
         function updateProjectiles(dt) { /* Minified v2.16 */ projectiles.player.forEach((p,i)=>{if(!p)return;p.worldX=(p.worldX+p.speed+PLANET_WIDTH)%PLANET_WIDTH;const canvasX=worldToCanvasX(p.worldX);const despawnBuffer=20;if(canvasX<-despawnBuffer||canvasX>CANVAS_WIDTH+despawnBuffer){projectiles.player.splice(i,1)}});projectiles.enemy.forEach((p,i)=>{p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;p.y+=p.vy;const cX=worldToCanvasX(p.worldX);if(cX<-p.width||cX>CANVAS_WIDTH+p.width||p.y<-p.height||p.y>CANVAS_HEIGHT+p.height)projectiles.enemy.splice(i,1)}) }
         function updateEnemies(dt) { /* Minified */ for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(e.type==='Lander')updateLander(e,dt);if(e.type==='Mutant')updateMutant(e,dt);e.worldX=(e.worldX+e.vx+PLANET_WIDTH)%PLANET_WIDTH;e.y+=e.vy;} }
         function updateLander(l, dt) { /* Minified */ l.stateTimer-=dt;switch(l.state){case'patrolling':l.vx=Math.sin(Date.now()*.001+l.worldX*.1)*LANDER_SPEED*.5;l.vy=Math.cos(Date.now()*.0008+l.worldX*.08)*LANDER_SPEED*.3;l.y=clamp(l.y,50,GROUND_LEVEL-l.height-HUMANOID_HEIGHT-20);if(l.stateTimer<=0){l.state='seeking';l.stateTimer=random(2e3,5e3)}break;case'seeking':if(!l.targetHuman||l.targetHuman.isAbducted||!l.targetHuman.isSafe)l.targetHuman=findClosestHuman(l);if(l.targetHuman){let dx=l.targetHuman.worldX-l.worldX;if(Math.abs(dx)>PLANET_WIDTH/2)dx=dx>0?dx-PLANET_WIDTH:dx+PLANET_WIDTH;const ang=Math.atan2(l.targetHuman.y-l.height-l.y,dx);l.vx=Math.cos(ang)*LANDER_SPEED;l.vy=Math.sin(ang)*LANDER_SPEED;if(getDistance(l.worldX,l.y,l.targetHuman.worldX,l.targetHuman.y-l.height)<l.height*1.5){l.state='abducting';l.isCarryingHuman=true;l.targetHuman.isAbducted=true;l.targetHuman.abductor=l;l.targetHuman.isSafe=false;if(audioInitialized&&synthAbduct)synthAbduct.triggerAttackRelease("G2","4n")}}else{l.state='patrolling';l.stateTimer=random(3e3,6e3)}if(l.stateTimer<=0&&l.state==='seeking'){l.state='patrolling';l.stateTimer=random(3e3,6e3)}break;case'abducting':l.vx=0;l.vy=-LANDER_SPEED*.8;if(l.targetHuman){l.targetHuman.worldX=l.worldX;l.targetHuman.y=l.y+l.height/2}if(l.y<-l.height){if(l.targetHuman){transformToMutant(l.targetHuman,l.worldX,10);let idx=humanoids.indexOf(l.targetHuman);if(idx!==-1)humanoids.splice(idx,1)}enemies.splice(enemies.indexOf(l),1)}break;}}
-        function updateMutant(m, dt) { /* Minified v2.18 */ const pCX=worldToCanvasX(player.worldX),mCX=worldToCanvasX(m.worldX);const ang=Math.atan2(player.y-m.y,pCX-mCX);m.vx=Math.cos(ang)*MUTANT_SPEED;m.vy=Math.sin(ang)*MUTANT_SPEED;if(Date.now()-(m.lastShotTime||0)>MUTANT_FIRE_RATE){projectiles.enemy.push({type:'enemy_projectile',worldX:m.worldX+m.width/2,y:m.y+m.height/2,vx:Math.cos(ang)*ENEMY_PROJECTILE_SPEED,vy:Math.sin(ang)*ENEMY_PROJECTILE_SPEED,width:ENEMY_PROJECTILE_WIDTH,height:ENEMY_PROJECTILE_HEIGHT,color:'#FF8800'});m.lastShotTime=Date.now();if(audioInitialized&&synthEnemyShoot)synthEnemyShoot.triggerAttackRelease("A3","8n")}}
+        function updateMutant(m, dt) { /* Minified v2.26 */ const pCX=worldToCanvasX(player.worldX);const mCX=worldToCanvasX(m.worldX);let dxToPlayer=player.worldX-m.worldX;if(Math.abs(dxToPlayer)>PLANET_WIDTH/2){dxToPlayer=dxToPlayer>0?dxToPlayer-PLANET_WIDTH:dxToPlayer+PLANET_WIDTH}const dyToPlayer=player.y-m.y;const ang=Math.atan2(dyToPlayer,dxToPlayer);m.vx=Math.cos(ang)*MUTANT_SPEED;m.vy=Math.sin(ang)*MUTANT_SPEED;if(Date.now()-(m.lastShotTime||0)>MUTANT_FIRE_RATE){projectiles.enemy.push({type:'enemy_projectile',worldX:m.worldX+m.width/2,y:m.y+m.height/2,vx:Math.cos(ang)*ENEMY_PROJECTILE_SPEED,vy:Math.sin(ang)*ENEMY_PROJECTILE_SPEED,width:ENEMY_PROJECTILE_WIDTH,height:ENEMY_PROJECTILE_HEIGHT,color:'#FF8800'});m.lastShotTime=Date.now();if(audioInitialized&&synthEnemyShoot)synthEnemyShoot.triggerAttackRelease("A3","8n")}}
         function findClosestHuman(e){ /* Minified */ let c=null,mD=Infinity;humanoids.forEach(h=>{if(!h.isAbducted&&h.isSafe){let dX=Math.abs(h.worldX-e.worldX);let dist=Math.min(dX,PLANET_WIDTH-dX);if(dist<mD){mD=dist;c=h;}}});return c;}
         function transformToMutant(human,x,y){ /* Minified */ enemies.push({type:'Mutant',worldX:x,y:y,width:MUTANT_WIDTH,height:MUTANT_HEIGHT,vx:0,vy:0,color:'#FF6347',lastShotTime:0});createExplosion(x,y,'#FF6347');}
         function updateHumanoids(dt){ /* Minified */ humanoids.forEach(h=>{if(h.isFalling){h.y+=HUMANOID_FALL_SPEED;if(h.y>=GROUND_LEVEL-h.height){h.y=GROUND_LEVEL-h.height;h.isFalling=false;h.isSafe=true;}}});}
         function updateParticles(dt){ /* Minified */ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}if(p.type==='explosion_flash'){p.radius=p.maxRadius*(1-(p.life/p.initialLife));p.alpha=0.8*(p.life/p.initialLife);}else{p.vy+=0.05;p.vx*=0.99;if(typeof p.worldX !=='undefined'){p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;}else{p.x+=p.vx;}p.y+=p.vy;p.alpha=p.life/p.initialLife;}}}
         function createParticleEffect(x,y,color,count,speedRange,isScreenSpace=false, life = EXPLOSION_PARTICLE_LIFE, particleType = 'debris'){ /* Minified */ for(let i=0;i<count;i++){let p={y:y,vx:random(-speedRange,speedRange),vy:random(-speedRange-1,speedRange-3),size:random(1,4),color:color,life:random(life*0.5,life),initialLife:life, alpha:1.0, type: particleType};if(isScreenSpace){p.x=x;}else{p.worldX=x;}particles.push(p);}}
-
         function createExplosion(worldX, y, baseColor) {
              if (!audioInitialized) return;
+             // Use Tone.Transport.scheduleOnce for each component of the explosion sound
+             // This schedules the sound to play at a precise time on Tone's internal clock,
+             // with slight offsets to prevent conflicts if multiple explosions occur in the same game frame.
+             const now = Tone.now();
+             const timeOffsetClick = 0.001; // Start click almost immediately
+             const timeOffsetNoise = 0.005; // Noise slightly after click
+             const timeOffsetRumble = 0.01;  // Rumble slightly after noise
 
-             // Schedule the sound events slightly in the future to avoid exact same-time conflicts
-             // Using Tone.Transport.scheduleOnce for more reliable scheduling in rapid succession.
              Tone.Transport.scheduleOnce(time => {
                  if (synthExplosionClick) synthExplosionClick.triggerAttackRelease("32n", time);
-                 if (synthExplosionNoise) synthExplosionNoise.triggerAttackRelease("8n", time + 0.01); // Stagger slightly
-                 if (synthExplosionRumbleEnv) synthExplosionRumbleEnv.triggerAttackRelease(0.5, time + 0.02); // Stagger slightly more
-             }, Tone.now() + 0.001); // Schedule this whole explosion event a tiny bit in the future from "now"
+             }, now + timeOffsetClick);
 
-             // Visual particles
+             Tone.Transport.scheduleOnce(time => {
+                 if (synthExplosionNoise) synthExplosionNoise.triggerAttackRelease("8n", time);
+             }, now + timeOffsetNoise);
+
+             Tone.Transport.scheduleOnce(time => {
+                 if (synthExplosionRumbleEnv) synthExplosionRumbleEnv.triggerAttackRelease(0.5, time);
+             }, now + timeOffsetRumble);
+
+             // Visual particles (unchanged)
              particles.push({type:'explosion_flash',worldX:worldX,y:y,radius:0,maxRadius:EXPLOSION_FLASH_MAX_RADIUS,color:'rgba(255,255,200,0.9)',life:EXPLOSION_FLASH_DURATION,initialLife:EXPLOSION_FLASH_DURATION,alpha:0.9});
              const colors=[baseColor,'#FFA500','#FF4500','#FFD700'];
              for(let i=0;i<EXPLOSION_PARTICLE_COUNT;i++){particles.push({type:'debris',worldX:worldX,y:y,vx:random(-5,5),vy:random(-6,1),size:random(2,5),color:colors[Math.floor(random(0,colors.length))],life:random(EXPLOSION_PARTICLE_LIFE*.7,EXPLOSION_PARTICLE_LIFE),initialLife:EXPLOSION_PARTICLE_LIFE,alpha:1.0});}
