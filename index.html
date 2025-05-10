@@ -39,7 +39,7 @@
             position: relative;
             background-color: rgba(0, 20, 20, 0.6);
             border: 1px solid #00AAAA;
-            border-top: none; /* Connects visually if canvas has bottom border */
+            border-top: none; 
             box-sizing: border-box;
         }
         #radar {
@@ -88,9 +88,9 @@
             text-align: center;
             background-color: rgba(0, 10, 15, 0.9);
             padding: 20px 25px;
-            border: 2px solid #00FFFF;
+            border: 2px solid rgba(0, 255, 255, 0.3); 
             border-radius: 15px;
-            box-shadow: 0 0 20px #00FFFF, 0 0 30px #00FFFF inset;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), 0 0 15px rgba(0, 255, 255, 0.1) inset;
             display: none;
             z-index: 100;
             flex-direction: column;
@@ -110,6 +110,11 @@
             color: #00FFFF;
             margin-bottom: 20px;
             white-space: pre-line;
+        }
+        .final-score-value { 
+            font-size: 2em; 
+            font-weight: bold;
+            color: #FFFFFF;
         }
         #action-button-container { margin-top: 15px; }
         #action-button {
@@ -134,6 +139,26 @@
         .enemy-dot { width: 4px; height: 4px; background-color: #FF0000; box-shadow: 0 0 3px #FF0000; }
         .mutant-dot { width: 5px; height: 5px; background-color: #FF8800; animation: pulse 1s infinite; box-shadow: 0 0 4px #FF8800; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        #controls-display {
+            width: 90%;
+            max-width: 800px;
+            margin: 10px auto;
+            padding: 5px 0;
+            text-align: center;
+            color: #00AAAA;
+            font-size: clamp(11px, 1.8vw, 13px);
+            border: 1px solid #005555;
+            background-color: rgba(0, 10, 10, 0.5);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        #controls-display span {
+            margin: 0 8px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -145,7 +170,7 @@
             <div id="action-button-container">
                 <button id="action-button">
                     <span id="action-button-main-text">Start</span>
-                    <span id="action-button-subtext">or press Enter</span>
+                    <span id="action-button-subtext">Click or press Enter</span>
                 </button>
             </div>
         </div>
@@ -159,6 +184,13 @@
             <div>Bombs: <span id="bombs-value">3</span></div>
             <div class="lives">Lives: <span id="lives-value">3</span></div>
         </div>
+    </div>
+    <div id="controls-display">
+        <span>Arrows/WASD: Move</span>
+        <span>Space/Ctrl: Shoot</span>
+        <span>Shift: Shield</span>
+        <span>B: Bomb</span>
+        <span>H: Hyperspace</span>
     </div>
 
     <script>
@@ -212,7 +244,7 @@
                 console.log("Audio Context not running, attempting Tone.start()");
                 return Tone.start().then(() => {
                     console.log("Tone.start() successful, initializing synths...");
-                    if (Tone.Transport.state !== "started") { // Ensure transport is started only once
+                    if (Tone.Transport.state !== "started") {
                         Tone.Transport.start();
                         console.log("Tone.Transport started.");
                     }
@@ -223,7 +255,7 @@
 
                     synthEnemyShoot = new Tone.PolySynth(Tone.Synth, { polyphony: 4, voice: Tone.Synth, options: { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.15, sustain: 0, release: 0.1 }, volume: -32 } }).toDestination();
 
-                    const lowOsc = new Tone.Oscillator("C1", "sine").start(); // Start immediately, envelope controls volume
+                    const lowOsc = new Tone.Oscillator("C1", "sine").start();
                     synthExplosionRumbleEnv = new Tone.AmplitudeEnvelope({ attack: 0.02, decay: 0.4, sustain: 0.1, release: 0.5 }).toDestination();
                     lowOsc.connect(synthExplosionRumbleEnv); lowOsc.volume.value = -3;
 
@@ -238,7 +270,7 @@
                     console.log("Audio Initialized after Tone.start(). Transport started.");
                 }).catch(e => {
                     console.error("Tone.start() failed:", e);
-                    return Promise.reject(e);
+                    return Promise.reject(e); 
                 });
             } else {
                  console.log("Audio context already running or initialized.");
@@ -273,13 +305,13 @@
         };
 
         function handleActionButtonClick() {
-            initializeAudio().then(() => { // Ensure audio is ready before proceeding
+            initializeAudio().then(() => { 
                 if (!gameRunning || gameOverState) {
                     let playStartSound = isFirstEverStart || gameOverState;
 
                     if (gameOverState) { resetGame(); }
                     else if (mainMessageTitle.textContent.includes("Cleared")) { resetGame(true); }
-                    else if (isFirstEverStart) { // Only reset fully if it's the very first time
+                    else if (isFirstEverStart) { 
                         resetGame();
                     }
                     startGame(playStartSound);
@@ -297,16 +329,20 @@
                  });
             }
         }
-        function showStartScreen() { /* Minified v2.13 */ mainMessageTitle.textContent="Defender Ascendant";secondaryMessageContent.innerHTML=`Save the Humanoids!\n\nControls:\nArrows or A/W/S/D: Move Ship\nSpace or Ctrl: Shoot\nShift: Activate Shield\nB: Smart Bomb\nH: Hyperspace`;actionButtonMainText.textContent="Start";actionButtonSubtext.textContent="or press Enter";messageOverlay.style.display='flex';gameOverState=false;gameRunning=false; }
+        function showStartScreen() {
+            mainMessageTitle.textContent="Defender Ascendant";
+            secondaryMessageContent.innerHTML=`Save the Humanoids!`;
+            actionButtonMainText.textContent="Start";actionButtonSubtext.textContent="Click or press Enter";
+            messageOverlay.style.display='flex';gameOverState=false;gameRunning=false;
+        }
 
         function startGame(playStartSound = false) {
             if (!gameRunning) {
                 gameRunning = true;
                 gameOverState = false;
                 messageOverlay.style.display = 'none';
-                // Ensure player is initialized if starting for the first time this session
                 if (!player.worldX && player.worldX !== 0) {
-                    resetGame(); // This will also set isFirstEverStart to true
+                    resetGame(); 
                 }
 
                 if (audioInitialized && synthGameStart && playStartSound) {
@@ -325,79 +361,18 @@
         function createStars() { /* Minified */ stars=[];for(let i=0;i<STAR_COUNT;i++){stars.push({x:random(0,CANVAS_WIDTH),y:random(0,CANVAS_HEIGHT),size:random(.5,2),parallax:random(.1,.5)})} }
         function spawnHumanoids() { /* Minified */ const count=HUMANOID_COUNT_PER_WAVE_MULTIPLIER;humanoids=[];for(let i=0;i<count;i++){humanoids.push({type:'humanoid',worldX:random(0,PLANET_WIDTH),y:GROUND_LEVEL-HUMANOID_HEIGHT,width:HUMANOID_WIDTH,height:HUMANOID_HEIGHT,color:'#FFFFFF',isAbducted:false,abductor:null,isFalling:false,isSafe:true})} }
         function spawnWaveEnemies() { /* Minified */ enemies=[];const landerCount=3+currentWave*2;for(let i=0;i<landerCount;i++){enemies.push({type:'Lander',worldX:random(0,PLANET_WIDTH),y:random(50,CANVAS_HEIGHT/2),width:LANDER_WIDTH,height:LANDER_HEIGHT,vx:0,vy:0,color:'#FF0000',targetHuman:null,isCarryingHuman:false,state:'patrolling',stateTimer:random(1e3,3e3)})} }
-        function handleInput() { /* Minified */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;let hInput=0;if(keys['ArrowLeft']||keys['KeyA'])hInput=-1;if(keys['ArrowRight']||keys['KeyD'])hInput=1;if(hInput!==0){player.vx+=PLAYER_THRUST*hInput;player.facingDirection=hInput}if(keys['ArrowUp']||keys['KeyW'])player.vy-=PLAYER_THRUST;if(keys['ArrowDown']||keys['KeyS'])player.vy+=PLAYER_THRUST;if(keys['Space']||keys['ControlLeft']){if(Date.now()-player.lastShotTime>PLAYER_FIRE_RATE){let pSpawnX=player.worldX+(player.facingDirection===1?player.width:-PLAYER_PROJECTILE_WIDTH);
-projectiles.player.push({
-    type:'player_projectile',
-    worldX:pSpawnX,
-    startWorldX:pSpawnX,
-    y:player.y+player.height/2-PLAYER_PROJECTILE_HEIGHT/2,
-    width:PLAYER_PROJECTILE_WIDTH,
-    height:PLAYER_PROJECTILE_HEIGHT,
-    speed:PLAYER_PROJECTILE_SPEED*player.facingDirection,
-    color:'#FFFF00'
-});
-player.lastShotTime=Date.now();
-if(audioInitialized&&synthPlayerShoot)synthPlayerShoot.triggerAttackRelease("C5","16n");
-createParticleEffect(pSpawnX+(player.facingDirection===1?0:PLAYER_PROJECTILE_WIDTH),player.y+player.height/2,'#FFA500',3,2,false,50)}}if(keys['KeyB']&&smartBombs>0&&!player.isShieldActive){activateSmartBomb();smartBombs--;keys['KeyB']=false}if((keys['ShiftLeft']||keys['ShiftRight'])&&!player.isShieldActive&&player.shieldEnergy>=PLAYER_SHIELD_ACTIVATION_COST){player.isShieldActive=true;player.shieldEnergy-=PLAYER_SHIELD_ACTIVATION_COST;player.shieldActivationTime=Date.now();keys['ShiftLeft']=keys['ShiftRight']=false;if(audioInitialized&&synthShieldOn)synthShieldOn.triggerAttackRelease("C4",.2)}if(keys['KeyH']&&Date.now()-player.lastHyperspaceTime>HYPERSPACE_COOLDOWN){activateHyperspace();keys['KeyH']=false} }
+        function handleInput() { /* Minified */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;let hInput=0;if(keys['ArrowLeft']||keys['KeyA'])hInput=-1;if(keys['ArrowRight']||keys['KeyD'])hInput=1;if(hInput!==0){player.vx+=PLAYER_THRUST*hInput;player.facingDirection=hInput}if(keys['ArrowUp']||keys['KeyW'])player.vy-=PLAYER_THRUST;if(keys['ArrowDown']||keys['KeyS'])player.vy+=PLAYER_THRUST;if(keys['Space']||keys['ControlLeft']){if(Date.now()-player.lastShotTime>PLAYER_FIRE_RATE){let pSpawnX=player.worldX+(player.facingDirection===1?player.width:-PLAYER_PROJECTILE_WIDTH);let pInitialWorldX = (pSpawnX + PLANET_WIDTH) % PLANET_WIDTH; projectiles.player.push({type:'player_projectile',worldX:pInitialWorldX,y:player.y+player.height/2-PLAYER_PROJECTILE_HEIGHT/2,width:PLAYER_PROJECTILE_WIDTH,height:PLAYER_PROJECTILE_HEIGHT,speed:PLAYER_PROJECTILE_SPEED*player.facingDirection,color:'#FFFF00', spawnWorldX: pInitialWorldX});player.lastShotTime=Date.now();if(audioInitialized&&synthPlayerShoot)synthPlayerShoot.triggerAttackRelease("C5","16n");createParticleEffect(pInitialWorldX,player.y+player.height/2,'#FFA500',3,2,false,50)}}if(keys['KeyB']&&smartBombs>0&&!player.isShieldActive){activateSmartBomb();smartBombs--;keys['KeyB']=false}if((keys['ShiftLeft']||keys['ShiftRight'])&&!player.isShieldActive&&player.shieldEnergy>=PLAYER_SHIELD_ACTIVATION_COST){player.isShieldActive=true;player.shieldEnergy-=PLAYER_SHIELD_ACTIVATION_COST;player.shieldActivationTime=Date.now();keys['ShiftLeft']=keys['ShiftRight']=false;if(audioInitialized&&synthShieldOn)synthShieldOn.triggerAttackRelease("C4",.2)}if(keys['KeyH']&&Date.now()-player.lastHyperspaceTime>HYPERSPACE_COOLDOWN){activateHyperspace();keys['KeyH']=false} }
         function updatePlayer(dt) { /* Minified */ if(player.hyperspaceActive)return;const oldWorldX=player.worldX;player.vx*=PLAYER_FRICTION;player.vy*=PLAYER_FRICTION;player.vx=clamp(player.vx,-PLAYER_MAX_SPEED,PLAYER_MAX_SPEED);player.vy=clamp(player.vy,-PLAYER_MAX_SPEED,PLAYER_MAX_SPEED);let nextRawWorldX=oldWorldX+player.vx;player.y=clamp(player.y+player.vy,0,GROUND_LEVEL-player.height);if(player.vx>0&&nextRawWorldX>=PLANET_WIDTH){player.worldX=nextRawWorldX%PLANET_WIDTH;worldOffsetX=(player.worldX-PLAYER_APPEAR_OFFSET+PLANET_WIDTH)%PLANET_WIDTH}else if(player.vx<0&&nextRawWorldX<0){player.worldX=(nextRawWorldX%PLANET_WIDTH+PLANET_WIDTH)%PLANET_WIDTH;worldOffsetX=(player.worldX-(CANVAS_WIDTH-PLAYER_APPEAR_OFFSET-player.width)+PLANET_WIDTH)%PLANET_WIDTH}else{player.worldX=(nextRawWorldX+PLANET_WIDTH)%PLANET_WIDTH;const screenEdgeBuffer=CANVAS_WIDTH/3.5;const playerCanvasX=(player.worldX-worldOffsetX+PLANET_WIDTH)%PLANET_WIDTH;if(playerCanvasX<screenEdgeBuffer&&player.vx<0){worldOffsetX=(worldOffsetX+player.vx+PLANET_WIDTH)%PLANET_WIDTH}else if(playerCanvasX>CANVAS_WIDTH-screenEdgeBuffer&&player.vx>0){worldOffsetX=(worldOffsetX+player.vx+PLANET_WIDTH)%PLANET_WIDTH}}worldOffsetX=(worldOffsetX+PLANET_WIDTH)%PLANET_WIDTH;if(player.isShieldActive){if(Date.now()-player.shieldActivationTime>PLAYER_SHIELD_DURATION){player.isShieldActive=false;if(audioInitialized&&synthShieldOff)synthShieldOff.triggerAttackRelease("A3",.1);deflectFrozenProjectiles()}}else{player.shieldEnergy=Math.min(PLAYER_MAX_SHIELD_ENERGY,player.shieldEnergy+(PLAYER_SHIELD_RECHARGE_RATE*(dt/1e3)))}if(player.isInvulnerable){player.invulnerabilityTimer-=dt;if(player.invulnerabilityTimer<=0)player.isInvulnerable=false}}
-        function updateProjectiles(dt) {
-    // Player projectiles: despawn after max world distance, not canvasX
-    const MAX_PROJECTILE_TRAVEL = PLANET_WIDTH; // Can adjust as needed
-    for (let i = projectiles.player.length - 1; i >= 0; i--) {
-        let p = projectiles.player[i];
-        if (!p) continue;
-        p.worldX = (p.worldX + p.speed + PLANET_WIDTH) % PLANET_WIDTH;
-        // Calculate shortest wrapped distance from spawn
-        let dx = Math.abs(p.worldX - p.startWorldX);
-        if (dx > PLANET_WIDTH / 2) dx = PLANET_WIDTH - dx;
-        if (dx > MAX_PROJECTILE_TRAVEL) {
-            projectiles.player.splice(i, 1);
-        }
-    }
-    // Enemy projectiles: keep old logic
-    projectiles.enemy.forEach((p,i)=>{
-        p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;
-        p.y+=p.vy;
-        const cX=worldToCanvasX(p.worldX);
-        if(cX<-p.width||cX>CANVAS_WIDTH+p.width||p.y<-p.height||p.y>CANVAS_HEIGHT+p.height)
-            projectiles.enemy.splice(i,1)
-    });
-}
+        function updateProjectiles(dt) { /* Minified v2.38 */ projectiles.player.forEach((p,i)=>{if(!p)return;p.worldX=(p.worldX+p.speed+PLANET_WIDTH)%PLANET_WIDTH;let distTravelled=Math.abs(p.worldX-p.spawnWorldX);if(distTravelled>PLANET_WIDTH/2){distTravelled=PLANET_WIDTH-distTravelled}if(distTravelled>CANVAS_WIDTH+50){projectiles.player.splice(i,1)}});projectiles.enemy.forEach((p,i)=>{p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;p.y+=p.vy;const cX=worldToCanvasX(p.worldX);if(cX<-p.width||cX>CANVAS_WIDTH+p.width||p.y<-p.height||p.y>CANVAS_HEIGHT+p.height)projectiles.enemy.splice(i,1)}) }
         function updateEnemies(dt) { /* Minified */ for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(e.type==='Lander')updateLander(e,dt);if(e.type==='Mutant')updateMutant(e,dt);e.worldX=(e.worldX+e.vx+PLANET_WIDTH)%PLANET_WIDTH;e.y+=e.vy;} }
-        function updateLander(l, dt) { /* Minified */ l.stateTimer-=dt;switch(l.state){case'patrolling':l.vx=Math.sin(Date.now()*.001+l.worldX*.1)*LANDER_SPEED*.5;l.vy=Math.cos(Date.now()*.0008+l.worldX*.08)*LANDER_SPEED*.3;l.y=clamp(l.y,50,GROUND_LEVEL-l.height-HUMANOID_HEIGHT-20);if(l.stateTimer<=0){l.state='seeking';l.stateTimer=random(2e3,5e3)}break;case'seeking':if(!l.targetHuman||l.targetHuman.isAbducted||!l.targetHuman.isSafe)l.targetHuman=findClosestHuman(l);if(l.targetHuman){let dx=l.targetHuman.worldX-l.worldX;if(Math.abs(dx)>PLANET_WIDTH/2)dx=dx>0?dx-PLANET_WIDTH:dx+PLANET_WIDTH;const ang=Math.atan2(l.targetHuman.y-l.height-l.y,dx);l.vx=Math.cos(ang)*LANDER_SPEED;l.vy=Math.sin(ang)*LANDER_SPEED;if(getDistance(l.worldX,l.y,l.targetHuman.worldX,l.targetHuman.y-l.height)<l.height*1.5){l.state='abducting';l.isCarryingHuman=true;l.targetHuman.isAbducted=true;l.targetHuman.abductor=l;l.targetHuman.isSafe=false;if(audioInitialized&&synthAbduct)synthAbduct.triggerAttackRelease("G2","4n")}}else{l.state='patrolling';l.stateTimer=random(3e3,6e3)}if(l.stateTimer<=0&&l.state==='seeking'){l.state='patrolling';l.stateTimer=random(3e3,6e3)}break;case'abducting':l.vx=0;l.vy=-LANDER_SPEED*.8;if(l.targetHuman){l.targetHuman.worldX=l.worldX;l.targetHuman.y=l.y+l.height/2}if(l.y<-l.height){if(l.targetHuman){transformToMutant(l.targetHuman,l.worldX,10);let idx=humanoids.indexOf(l.targetHuman);if(idx!==-1)humanoids.splice(idx,1)}enemies.splice(enemies.indexOf(l),1)}break;}}
+        function updateLander(l, dt) { /* Minified v2.32 */ l.stateTimer-=dt;switch(l.state){case'patrolling':l.vx=Math.sin(Date.now()*.001+l.worldX*.1)*LANDER_SPEED*.5;l.vy=Math.cos(Date.now()*.0008+l.worldX*.08)*LANDER_SPEED*.3;l.y=clamp(l.y,50,GROUND_LEVEL-l.height-HUMANOID_HEIGHT-20);if(l.stateTimer<=0){l.state='seeking';l.stateTimer=random(2e3,5e3)}break;case'seeking':if(!l.targetHuman||l.targetHuman.isAbducted||!l.targetHuman.isSafe)l.targetHuman=findClosestHuman(l);if(l.targetHuman){let dx=l.targetHuman.worldX-l.worldX;if(Math.abs(dx)>PLANET_WIDTH/2)dx=dx>0?dx-PLANET_WIDTH:dx+PLANET_WIDTH;const ang=Math.atan2(l.targetHuman.y-l.height-l.y,dx);l.vx=Math.cos(ang)*LANDER_SPEED;l.vy=Math.sin(ang)*LANDER_SPEED;if(getDistance(l.worldX,l.y,l.targetHuman.worldX,l.targetHuman.y-l.height)<l.height*1.5){l.state='abducting';l.isCarryingHuman=true;l.targetHuman.isAbducted=true;l.targetHuman.abductor=l;l.targetHuman.isSafe=false;if(audioInitialized&&synthAbduct)synthAbduct.triggerAttackRelease("8n",Tone.now()+.01);}}else{l.state='patrolling';l.stateTimer=random(3e3,6e3)}if(l.stateTimer<=0&&l.state==='seeking'){l.state='patrolling';l.stateTimer=random(3e3,6e3)}break;case'abducting':l.vx=0;l.vy=-LANDER_SPEED*.8;if(l.targetHuman){l.targetHuman.worldX=l.worldX;l.targetHuman.y=l.y+l.height/2}if(l.y<-l.height){if(l.targetHuman){transformToMutant(l.targetHuman,l.worldX,10);let idx=humanoids.indexOf(l.targetHuman);if(idx!==-1)humanoids.splice(idx,1)}enemies.splice(enemies.indexOf(l),1)}break;}}
         function updateMutant(m, dt) { /* Minified v2.26 */ const pCX=worldToCanvasX(player.worldX);const mCX=worldToCanvasX(m.worldX);let dxToPlayer=player.worldX-m.worldX;if(Math.abs(dxToPlayer)>PLANET_WIDTH/2){dxToPlayer=dxToPlayer>0?dxToPlayer-PLANET_WIDTH:dxToPlayer+PLANET_WIDTH}const dyToPlayer=player.y-m.y;const ang=Math.atan2(dyToPlayer,dxToPlayer);m.vx=Math.cos(ang)*MUTANT_SPEED;m.vy=Math.sin(ang)*MUTANT_SPEED;if(Date.now()-(m.lastShotTime||0)>MUTANT_FIRE_RATE){projectiles.enemy.push({type:'enemy_projectile',worldX:m.worldX+m.width/2,y:m.y+m.height/2,vx:Math.cos(ang)*ENEMY_PROJECTILE_SPEED,vy:Math.sin(ang)*ENEMY_PROJECTILE_SPEED,width:ENEMY_PROJECTILE_WIDTH,height:ENEMY_PROJECTILE_HEIGHT,color:'#FF8800'});m.lastShotTime=Date.now();if(audioInitialized&&synthEnemyShoot)synthEnemyShoot.triggerAttackRelease("A3","8n")}}
         function findClosestHuman(e){ /* Minified */ let c=null,mD=Infinity;humanoids.forEach(h=>{if(!h.isAbducted&&h.isSafe){let dX=Math.abs(h.worldX-e.worldX);let dist=Math.min(dX,PLANET_WIDTH-dX);if(dist<mD){mD=dist;c=h;}}});return c;}
         function transformToMutant(human,x,y){ /* Minified */ enemies.push({type:'Mutant',worldX:x,y:y,width:MUTANT_WIDTH,height:MUTANT_HEIGHT,vx:0,vy:0,color:'#FF6347',lastShotTime:0});createExplosion(x,y,'#FF6347');}
         function updateHumanoids(dt){ /* Minified */ humanoids.forEach(h=>{if(h.isFalling){h.y+=HUMANOID_FALL_SPEED;if(h.y>=GROUND_LEVEL-h.height){h.y=GROUND_LEVEL-h.height;h.isFalling=false;h.isSafe=true;}}});}
         function updateParticles(dt){ /* Minified */ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}if(p.type==='explosion_flash'){p.radius=p.maxRadius*(1-(p.life/p.initialLife));p.alpha=0.8*(p.life/p.initialLife);}else{p.vy+=0.05;p.vx*=0.99;if(typeof p.worldX !=='undefined'){p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;}else{p.x+=p.vx;}p.y+=p.vy;p.alpha=p.life/p.initialLife;}}}
         function createParticleEffect(x,y,color,count,speedRange,isScreenSpace=false, life = EXPLOSION_PARTICLE_LIFE, particleType = 'debris'){ /* Minified */ for(let i=0;i<count;i++){let p={y:y,vx:random(-speedRange,speedRange),vy:random(-speedRange-1,speedRange-3),size:random(1,4),color:color,life:random(life*0.5,life),initialLife:life, alpha:1.0, type: particleType};if(isScreenSpace){p.x=x;}else{p.worldX=x;}particles.push(p);}}
-        function createExplosion(worldX, y, baseColor) {
-             if (!audioInitialized) return;
-             // Use Tone.Transport.scheduleOnce for each component of the explosion sound
-             // This schedules the sound to play at a precise time on Tone's internal clock,
-             // with slight offsets to prevent conflicts if multiple explosions occur in the same game frame.
-             const now = Tone.now();
-             const timeOffsetClick = 0.001; // Start click almost immediately
-             const timeOffsetNoise = 0.005; // Noise slightly after click
-             const timeOffsetRumble = 0.01;  // Rumble slightly after noise
-
-             Tone.Transport.scheduleOnce(time => {
-                 if (synthExplosionClick) synthExplosionClick.triggerAttackRelease("32n", time);
-             }, now + timeOffsetClick);
-
-             Tone.Transport.scheduleOnce(time => {
-                 if (synthExplosionNoise) synthExplosionNoise.triggerAttackRelease("8n", time);
-             }, now + timeOffsetNoise);
-
-             Tone.Transport.scheduleOnce(time => {
-                 if (synthExplosionRumbleEnv) synthExplosionRumbleEnv.triggerAttackRelease(0.5, time);
-             }, now + timeOffsetRumble);
-
-             // Visual particles (unchanged)
-             particles.push({type:'explosion_flash',worldX:worldX,y:y,radius:0,maxRadius:EXPLOSION_FLASH_MAX_RADIUS,color:'rgba(255,255,200,0.9)',life:EXPLOSION_FLASH_DURATION,initialLife:EXPLOSION_FLASH_DURATION,alpha:0.9});
-             const colors=[baseColor,'#FFA500','#FF4500','#FFD700'];
-             for(let i=0;i<EXPLOSION_PARTICLE_COUNT;i++){particles.push({type:'debris',worldX:worldX,y:y,vx:random(-5,5),vy:random(-6,1),size:random(2,5),color:colors[Math.floor(random(0,colors.length))],life:random(EXPLOSION_PARTICLE_LIFE*.7,EXPLOSION_PARTICLE_LIFE),initialLife:EXPLOSION_PARTICLE_LIFE,alpha:1.0});}
-         }
+        function createExplosion(worldX, y, baseColor) { /* Minified v2.23 */ if(!audioInitialized)return;Tone.Transport.scheduleOnce(time=>{if(synthExplosionClick)synthExplosionClick.triggerAttackRelease("32n",time)},Tone.now()+.001);Tone.Transport.scheduleOnce(time=>{if(synthExplosionNoise)synthExplosionNoise.triggerAttackRelease("8n",time)},Tone.now()+.006);Tone.Transport.scheduleOnce(time=>{if(synthExplosionRumbleEnv)synthExplosionRumbleEnv.triggerAttackRelease(.5,time)},Tone.now()+.011);particles.push({type:'explosion_flash',worldX:worldX,y:y,radius:0,maxRadius:EXPLOSION_FLASH_MAX_RADIUS,color:'rgba(255,255,200,0.9)',life:EXPLOSION_FLASH_DURATION,initialLife:EXPLOSION_FLASH_DURATION,alpha:0.9});const colors=[baseColor,'#FFA500','#FF4500','#FFD700'];for(let i=0;i<EXPLOSION_PARTICLE_COUNT;i++){particles.push({type:'debris',worldX:worldX,y:y,vx:random(-5,5),vy:random(-6,1),size:random(2,5),color:colors[Math.floor(random(0,colors.length))],life:random(EXPLOSION_PARTICLE_LIFE*.7,EXPLOSION_PARTICLE_LIFE),initialLife:EXPLOSION_PARTICLE_LIFE,alpha:1.0});}}
 
         function collisionDetection(){ /* Minified v2.17 */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;const pCX=worldToCanvasX(player.worldX),pRect={x:pCX,y:player.y,width:player.width,height:player.height};const shieldRadius=player.width*SHIELD_RADIUS_MULTIPLIER;const shieldCircle={x:pCX+player.width/2,y:player.y+player.height/2,radius:shieldRadius};for(let i=projectiles.player.length-1;i>=0;i--){let p=projectiles.player[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(rectIntersect(pR,eR)){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=(e.type==='Lander'?LANDER_POINTS:MUTANT_POINTS);projectiles.player.splice(i,1);if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(j,1);break}}}for(let i=projectiles.enemy.length-1;i>=0;i--){let p=projectiles.enemy[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,pR)){createParticleEffect(p.worldX,p.y,'#00FFFF',5,2,false,100,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("C5","16n");projectiles.enemy.splice(i,1)}else if(!player.isInvulnerable&&rectIntersect(pR,pRect)){projectiles.enemy.splice(i,1);playerHit();break}}for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,eR)){if(e.type==='Lander'){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=SHIELD_MINOR_ENEMY_DESTROY_SCORE;if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(i,1);if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("A4","16n")}else{createParticleEffect(e.worldX,e.y,'#00FFFF',8,3,false,150,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("E4","16n")}}else if(!player.isInvulnerable&&rectIntersect(pRect,eR)){if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}playerHit();enemies.splice(i,1);break}}for(let i=humanoids.length-1;i>=0;i--){let h=humanoids[i];if(!h)continue;if(h.isFalling){const hR={x:worldToCanvasX(h.worldX),y:h.y,width:h.width,height:h.height};if(rectIntersect(pRect,hR)){h.isFalling=false;h.y=GROUND_LEVEL-h.height;h.isSafe=true;score+=HUMANOID_RESCUE_POINTS;if(audioInitialized&&synthRescue)synthRescue.triggerAttackRelease("A5","8n");createParticleEffect(player.worldX,player.y,'#00FF00',10,3,false,200,'rescue_flash')}}}}
         function rectIntersect(r1,r2){ /* Minified */ return!(r2.x>r1.x+r1.width||r2.x+r2.width<r1.x||r2.y>r1.y+r1.height||r2.y+r2.height<r1.y);}
@@ -405,8 +380,16 @@ createParticleEffect(pSpawnX+(player.facingDirection===1?0:PLAYER_PROJECTILE_WID
         function deflectFrozenProjectiles(){}
         function activateHyperspace(){ /* Minified */ if(audioInitialized&&synthHyperspaceEnter)synthHyperspaceEnter.triggerAttackRelease("C2",.7);player.lastHyperspaceTime=Date.now();player.hyperspaceActive=true;createParticleEffect(player.worldX,player.y+player.height/2,'#FFFFFF',50,8,false,300,'hyperspace_trail');setTimeout(()=>{player.worldX=random(0,PLANET_WIDTH);player.y=random(CANVAS_HEIGHT*.2,GROUND_LEVEL-player.height-50);player.vx=0;player.vy=0;worldOffsetX=(player.worldX-CANVAS_WIDTH/2+PLANET_WIDTH)%PLANET_WIDTH;player.hyperspaceActive=false;player.isInvulnerable=true;player.invulnerabilityTimer=1e3;if(audioInitialized&&synthHyperspaceExit)synthHyperspaceExit.triggerAttackRelease("G5",.2);createParticleEffect(player.worldX,player.y+player.height/2,'#FFFFFF',30,5,false,300,'hyperspace_arrival')},750)}
         function playerHit(){ /* Minified */ if(player.isInvulnerable||player.hyperspaceActive)return;lives--;if(audioInitialized&&synthPlayerHit)synthPlayerHit.triggerAttackRelease(.1);createExplosion(player.worldX,player.y+player.height/2,player.color);if(lives<=0){triggerGameOver()}else{player.worldX=(worldOffsetX+CANVAS_WIDTH/2+PLANET_WIDTH)%PLANET_WIDTH;player.y=GROUND_LEVEL-PLAYER_HEIGHT-50;player.vx=0;player.vy=0;player.isInvulnerable=true;player.invulnerabilityTimer=PLAYER_INVULNERABILITY_DURATION;player.shieldEnergy=PLAYER_MAX_SHIELD_ENERGY;player.isShieldActive=false}}
-        function triggerGameOver(){ /* Minified */ gameRunning=false;gameOverState=true;if(audioInitialized&&synthGameOver)synthGameOver.triggerAttackRelease("C2",1.5);mainMessageTitle.textContent="Game Over!";secondaryMessageContent.textContent=`Final Score: ${score}`;actionButtonMainText.textContent="Restart";actionButtonSubtext.textContent="or press Enter";messageOverlay.style.display='flex'}
-        function checkWaveCompletion(){ /* Minified */ const activeHostiles=enemies.filter(e=>e.type==='Lander'||e.type==='Mutant').length;if(gameRunning&&!gameOverState&&activeHostiles===0&&humanoids.length>0){gameRunning=false;currentWave++;score+=humanoids.length*100;if(audioInitialized&&synthWaveClear)synthWaveClear.triggerAttackRelease(["C4","E4","G4"],"8n","+0.1");mainMessageTitle.textContent=`Wave ${currentWave-1} Cleared!`;secondaryMessageContent.textContent=`Humanoid Bonus: ${humanoids.length*100} points!`;actionButtonMainText.textContent="Next Wave";actionButtonSubtext.textContent="or press Enter";messageOverlay.style.display='flex'}else if(gameRunning&&!gameOverState&&humanoids.length===0&&activeHostiles>0){triggerGameOver();mainMessageTitle.textContent="Planet Lost!";secondaryMessageContent.textContent=`All humanoids abducted. Final Score: ${score}`}}
+        function triggerGameOver(){
+            gameRunning=false;gameOverState=true;
+            if(audioInitialized&&synthGameOver)synthGameOver.triggerAttackRelease("C2",1.5);
+            mainMessageTitle.textContent="Game Over!";
+            secondaryMessageContent.innerHTML=`Final Score: <span class="final-score-value">${score}</span>`; 
+            actionButtonMainText.textContent="Restart";
+            actionButtonSubtext.textContent="Click or press Enter";
+            messageOverlay.style.display='flex';
+        }
+        function checkWaveCompletion(){ /* Minified */ const activeHostiles=enemies.filter(e=>e.type==='Lander'||e.type==='Mutant').length;if(gameRunning&&!gameOverState&&activeHostiles===0&&humanoids.length>0){gameRunning=false;currentWave++;score+=humanoids.length*100;if(audioInitialized&&synthWaveClear)synthWaveClear.triggerAttackRelease(["C4","E4","G4"],"8n","+0.1");mainMessageTitle.textContent=`Wave ${currentWave-1} Cleared!`;secondaryMessageContent.textContent=`Humanoid Bonus: ${humanoids.length*100} points!`;actionButtonMainText.textContent="Next Wave";actionButtonSubtext.textContent="Click or press Enter";messageOverlay.style.display='flex'}else if(gameRunning&&!gameOverState&&humanoids.length===0&&activeHostiles>0){triggerGameOver();mainMessageTitle.textContent="Planet Lost!";secondaryMessageContent.innerHTML=`All humanoids abducted. Final Score: <span class="final-score-value">${score}</span>`;}}
         function draw(){ /* Minified */ if(!ctx)return;ctx.fillStyle='#000510';ctx.fillRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);stars.forEach(s=>{const sX=(s.x-(worldOffsetX*s.parallax)%CANVAS_WIDTH+CANVAS_WIDTH)%CANVAS_WIDTH;ctx.fillStyle=`rgba(200,220,255,${Math.max(.3,s.size/1.5*.8)})`;ctx.fillRect(sX,s.y,s.size,s.size)});ctx.strokeStyle='#0088AA';ctx.lineWidth=1.5;for(let j=0;j<3;j++){ctx.beginPath();let pF=.2+j*.2,a=15+j*10,f=.01+j*.005;for(let x=0;x<CANVAS_WIDTH;x++){let wX=x+worldOffsetX*pF,tY=GROUND_LEVEL+10+j*10+Math.sin(wX*f)*a;if(x===0)ctx.moveTo(x,tY);else ctx.lineTo(x,tY)}ctx.globalAlpha=.3+j*.2;ctx.stroke()}ctx.globalAlpha=1;humanoids.forEach(h=>drawWrappedEntity(ctx,h));projectiles.player.forEach(p=>drawWrappedEntity(ctx,p));projectiles.enemy.forEach(p=>drawWrappedEntity(ctx,p));enemies.forEach(e=>drawWrappedEntity(ctx,e));if(!player.hyperspaceActive&&player.worldX!==undefined){ctx.globalAlpha=(player.isInvulnerable&&Math.floor(player.invulnerabilityTimer/100)%2===0)?.5:1;drawWrappedEntity(ctx,player);if(player.isShieldActive){const pCX=worldToCanvasX(player.worldX);ctx.strokeStyle='#00FFFF';ctx.lineWidth=2;ctx.beginPath();ctx.arc(pCX+player.width/2,player.y+player.height/2,player.width*SHIELD_RADIUS_MULTIPLIER,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(0,255,255,0.1)';ctx.fill()}ctx.globalAlpha=1}particles.forEach(p=>{ctx.globalAlpha=p.alpha;let pCX=typeof p.worldX !=='undefined'?worldToCanvasX(p.worldX):p.x;if(p.type==='explosion_flash'){ctx.beginPath();ctx.arc(pCX,p.y,p.radius,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill()}else{ctx.fillStyle=p.color;ctx.fillRect(pCX,p.y,p.size,p.size)}});ctx.globalAlpha=1;drawRadar()}
         function drawWrappedEntity(ctx, entity) { /* Minified */ if(!entity||typeof entity.worldX==='undefined'||typeof entity.y==='undefined'||typeof entity.width==='undefined'||typeof entity.height==='undefined'){return}const canvasX=worldToCanvasX(entity.worldX);drawSpecificEntity(ctx,entity,canvasX,entity.y);if(canvasX<entity.width+20){drawSpecificEntity(ctx,entity,canvasX+PLANET_WIDTH,entity.y)}if(canvasX+entity.width>CANVAS_WIDTH-20){drawSpecificEntity(ctx,entity,canvasX-PLANET_WIDTH,entity.y)}}
         function drawSpecificEntity(eCtx,e,cX,cY){ /* Minified */ if(cX+e.width<0||cX>CANVAS_WIDTH||cY+e.height<0||cY>CANVAS_HEIGHT){return}eCtx.fillStyle=e.color;eCtx.strokeStyle=e.color;eCtx.lineWidth=1.5;switch(e.type){case'player':eCtx.beginPath();if(player.facingDirection===1){eCtx.moveTo(cX,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX,cY+e.height)}else{eCtx.moveTo(cX+e.width,cY);eCtx.lineTo(cX,cY+e.height/2);eCtx.lineTo(cX+e.width,cY+e.height)}eCtx.closePath();eCtx.fill();eCtx.fillStyle='#AAAAFF';eCtx.fillRect(cX+e.width/2-3,cY+e.height/2-3,6,6);let tAH=false,tS='none';if(keys['ArrowLeft']||keys['KeyA']){tAH=true;tS='right'}else if(keys['ArrowRight']||keys['KeyD']){tAH=true;tS='left'}if(tAH){eCtx.fillStyle='#FFA500';let tX=tS==='left'?cX-5:cX+e.width;eCtx.fillRect(tX,cY+e.height/4,5,e.height/2)}if(keys['ArrowUp']||keys['KeyW']){eCtx.fillStyle='#FFA500';eCtx.fillRect(cX+e.width/2-2.5,cY+e.height,5,5)}else if(keys['ArrowDown']||keys['KeyS']){eCtx.fillStyle='#FFA500';eCtx.fillRect(cX+e.width/2-2.5,cY-5,5,5)}break;case'Lander':eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,Math.PI,0);eCtx.fill();eCtx.fillRect(cX,cY+e.height/2,e.width,e.height/2);eCtx.beginPath();eCtx.moveTo(cX+e.width*.2,cY+e.height*.8);eCtx.lineTo(cX+e.width*.1,cY+e.height*1.2);eCtx.moveTo(cX+e.width*.8,cY+e.height*.8);eCtx.lineTo(cX+e.width*.9,cY+e.height*1.2);eCtx.stroke();break;case'Mutant':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height*.7);eCtx.lineTo(cX+e.width*.7,cY+e.height);eCtx.lineTo(cX+e.width*.3,cY+e.height);eCtx.lineTo(cX,cY+e.height*.7);eCtx.closePath();eCtx.fill();eCtx.fillStyle='#FFFF00';eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height*.4,e.width*.1,0,Math.PI*2);eCtx.fill();break;case'humanoid':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height*.25,e.width/2.5,0,Math.PI*2);eCtx.fill();eCtx.fillRect(cX+e.width*.3,cY+e.height*.4,e.width*.4,e.height*.6);if(e.isFalling){eCtx.strokeStyle='#CCCCCC';eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX,cY-e.height*.5);eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY-e.height*.5);eCtx.stroke()}break;case'player_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY+e.height);eCtx.closePath();eCtx.fill();eCtx.fillStyle='rgba(255,255,100,0.5)';eCtx.fillRect(cX-e.width*.3,cY+e.height*.25,e.width*.5,e.height*.5);break;case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
