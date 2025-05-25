@@ -227,6 +227,10 @@
                         <canvas id="bomber-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
                         <div class="enemy-label">Bomber</div>
                     </div>
+                    <div class="enemy-key-item">
+                        <canvas id="destroyer-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
+                        <div class="enemy-label">Destroyer</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -271,6 +275,15 @@
         const LANDER_WIDTH = 32; const LANDER_HEIGHT = 24; const LANDER_SPEED = 0.9; const LANDER_POINTS = 150;
         const MUTANT_WIDTH = 34; const MUTANT_HEIGHT = 26; const MUTANT_SPEED = 1.2;
         const MUTANT_FIRE_RATE = 1500; const MUTANT_POINTS = 300;
+        
+        // Destroyer enemy (appears in level 3+)
+        const DESTROYER_WIDTH = 40; const DESTROYER_HEIGHT = 25;
+        const DESTROYER_SPEED = 0.9; // Slower but has powerful lasers
+        const DESTROYER_FIRE_RATE = 2000; // Fires less frequently
+        const DESTROYER_POINTS = 350; // Worth more points
+        const DESTROYER_LASER_WIDTH = 30; // Long laser beams
+        const DESTROYER_LASER_HEIGHT = 2; // Half as tall as before
+        const DESTROYER_LASER_SPEED = 7; // Fast moving laser
         const BOMBER_WIDTH = 50; const BOMBER_HEIGHT = 14; const BOMBER_SPEED = 0.6; 
         const BOMBER_FIRE_RATE = 2000; const BOMBER_POINTS = 200;
         const BOMBER_BOMB_SPEED = 1.5; const BOMBER_BOMB_WIDTH = 12; const BOMBER_BOMB_HEIGHT = 12;
@@ -423,8 +436,93 @@
         }
         function resetGame(isNewWave = false) { /* Minified v2.13 */ if(!isNewWave){score=0;lives=3;smartBombs=3;currentWave=1; isFirstEverStart = true;}player={type:'player',worldX:PLANET_WIDTH/2,y:GROUND_LEVEL-PLAYER_HEIGHT-50,width:PLAYER_WIDTH,height:PLAYER_HEIGHT,vx:0,vy:0,facingDirection:1,color:'#00FF00',shieldEnergy:PLAYER_MAX_SHIELD_ENERGY,isShieldActive:false,shieldActivationTime:0,lastShotTime:0,isInvulnerable:false,invulnerabilityTimer:0,lastHyperspaceTime:0,hyperspaceActive:false};projectiles.player=[];projectiles.enemy=[];enemies=[];humanoids=[];particles=[];worldOffsetX=(player.worldX-CANVAS_WIDTH/2+PLANET_WIDTH)%PLANET_WIDTH;spawnHumanoids();spawnWaveEnemies();updateUI(); }
         function createStars() { /* Minified */ stars=[];for(let i=0;i<STAR_COUNT;i++){stars.push({x:random(0,CANVAS_WIDTH),y:random(0,CANVAS_HEIGHT),size:random(.5,2),parallax:random(.1,.5)})} }
-        function spawnHumanoids() { /* Minified */ const count=HUMANOID_COUNT_PER_WAVE_MULTIPLIER;humanoids=[];for(let i=0;i<count;i++){humanoids.push({type:'humanoid',worldX:random(0,PLANET_WIDTH),y:GROUND_LEVEL-HUMANOID_HEIGHT,width:HUMANOID_WIDTH,height:HUMANOID_HEIGHT,color:'#FFFFFF',isAbducted:false,abductor:null,isFalling:false,isSafe:true})} }
-        function spawnWaveEnemies() { /* Enhanced wave spawning with progressive difficulty */ enemies=[]; const landerCount=3+currentWave*2; for(let i=0;i<landerCount;i++){ enemies.push({type:'Lander',worldX:random(0,PLANET_WIDTH),y:random(50,CANVAS_HEIGHT/2),width:LANDER_WIDTH,height:LANDER_HEIGHT,vx:0,vy:0,color:'#FF0000',targetHuman:null,isCarryingHuman:false,state:'patrolling',stateTimer:random(1e3,3e3)}); } if(currentWave >= 2) { const bomberCount = Math.min(1 + Math.floor((currentWave - 2) / 2), 4); for(let i=0;i<bomberCount;i++){ enemies.push({type:'Bomber',worldX:random(0,PLANET_WIDTH),y:random(30,CANVAS_HEIGHT/3),width:BOMBER_WIDTH,height:BOMBER_HEIGHT,vx:0,vy:0,color:'#AA0044',state:'patrolling',stateTimer:random(1e3,3e3),lastShotTime:0}); } } }
+        function spawnHumanoids() { 
+            const count = HUMANOID_COUNT_PER_WAVE_MULTIPLIER;
+            humanoids = [];
+            
+            for(let i=0; i<count; i++){
+                humanoids.push({
+                    type: 'humanoid',
+                    worldX: random(0, PLANET_WIDTH),
+                    y: GROUND_LEVEL - HUMANOID_HEIGHT,
+                    width: HUMANOID_WIDTH,
+                    height: HUMANOID_HEIGHT,
+                    color: '#FFFFFF',
+                    isAbducted: false,
+                    abductor: null,
+                    isFalling: false,
+                    isSafe: true,
+                    // Animation properties
+                    armAngle: 0,                // Current arm angle
+                    armDirection: 1,            // Direction of arm movement (1 or -1)
+                    armWaveSpeed: random(0.05, 0.15),  // Speed of arm waving, randomized per humanoid
+                    parachuteOpened: false      // Whether parachute is opened
+                });
+            }
+        }
+        function spawnWaveEnemies() { 
+            /* Enhanced wave spawning with progressive difficulty */ 
+            enemies=[]; 
+            
+            // Spawn Landers - basic enemies that appear in all waves
+            const landerCount = 3 + currentWave * 2; 
+            for(let i=0; i<landerCount; i++){ 
+                enemies.push({
+                    type: 'Lander',
+                    worldX: random(0, PLANET_WIDTH),
+                    y: random(50, CANVAS_HEIGHT/2),
+                    width: LANDER_WIDTH,
+                    height: LANDER_HEIGHT,
+                    vx: 0,
+                    vy: 0,
+                    color: '#FF0000',
+                    targetHuman: null,
+                    isCarryingHuman: false,
+                    state: 'patrolling',
+                    stateTimer: random(1e3, 3e3)
+                }); 
+            } 
+            
+            // Spawn Bombers starting from wave 2
+            if(currentWave >= 2) { 
+                const bomberCount = Math.min(1 + Math.floor((currentWave - 2) / 2), 4); 
+                for(let i=0; i<bomberCount; i++){ 
+                    enemies.push({
+                        type: 'Bomber',
+                        worldX: random(0, PLANET_WIDTH),
+                        y: random(30, CANVAS_HEIGHT/3),
+                        width: BOMBER_WIDTH,
+                        height: BOMBER_HEIGHT,
+                        vx: 0,
+                        vy: 0,
+                        color: '#AA0044',
+                        state: 'patrolling',
+                        stateTimer: random(1e3, 3e3),
+                        lastShotTime: 0
+                    }); 
+                } 
+            }
+            
+            // Spawn Destroyers starting from wave 3
+            if(currentWave >= 3) {
+                const destroyerCount = Math.min(1 + Math.floor((currentWave - 3) / 2), 3); 
+                for(let i=0; i<destroyerCount; i++){
+                    enemies.push({
+                        type: 'Destroyer',
+                        worldX: random(0, PLANET_WIDTH),
+                        y: random(40, CANVAS_HEIGHT/4), // Higher up in the sky
+                        width: DESTROYER_WIDTH,
+                        height: DESTROYER_HEIGHT,
+                        vx: 0,
+                        vy: 0,
+                        color: '#0088FF', // Blue-ish color
+                        state: 'patrolling',
+                        stateTimer: random(2e3, 5e3),
+                        lastShotTime: 0
+                    });
+                }
+            }
+        }
         function handleInput() { /* Minified */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;let hInput=0;if(keys['ArrowLeft']||keys['KeyA'])hInput=-1;if(keys['ArrowRight']||keys['KeyD'])hInput=1;if(hInput!==0){player.vx+=PLAYER_THRUST*hInput;player.facingDirection=hInput}if(keys['ArrowUp']||keys['KeyW'])player.vy-=PLAYER_THRUST;if(keys['ArrowDown']||keys['KeyS'])player.vy+=PLAYER_THRUST;if(keys['Space']||keys['ControlLeft']){if(Date.now()-player.lastShotTime>PLAYER_FIRE_RATE){let pSpawnX=player.worldX+(player.facingDirection===1?player.width:-PLAYER_PROJECTILE_WIDTH);let pInitialWorldX = (pSpawnX + PLANET_WIDTH) % PLANET_WIDTH; projectiles.player.push({type:'player_projectile',worldX:pInitialWorldX,y:player.y+player.height/2-PLAYER_PROJECTILE_HEIGHT/2,width:PLAYER_PROJECTILE_WIDTH,height:PLAYER_PROJECTILE_HEIGHT,speed:PLAYER_PROJECTILE_SPEED*player.facingDirection,color:'#FFFF00', spawnWorldX: pInitialWorldX});player.lastShotTime=Date.now();if(audioInitialized&&synthPlayerShoot)synthPlayerShoot.triggerAttackRelease("C5","16n");createParticleEffect(pInitialWorldX,player.y+player.height/2,'#FFA500',3,2,false,50)}}if(keys['KeyB']&&smartBombs>0&&!player.isShieldActive){activateSmartBomb();smartBombs--;keys['KeyB']=false}if((keys['ShiftLeft']||keys['ShiftRight'])&&!player.isShieldActive&&player.shieldEnergy>=PLAYER_SHIELD_ACTIVATION_COST){player.isShieldActive=true;player.shieldEnergy-=PLAYER_SHIELD_ACTIVATION_COST;player.shieldActivationTime=Date.now();keys['ShiftLeft']=keys['ShiftRight']=false;if(audioInitialized&&synthShieldOn)synthShieldOn.triggerAttackRelease("C4",.2)}if(keys['KeyH']&&Date.now()-player.lastHyperspaceTime>HYPERSPACE_COOLDOWN){activateHyperspace();keys['KeyH']=false} }
         function updatePlayer(dt) { /* Minified */ if(player.hyperspaceActive)return;const oldWorldX=player.worldX;player.vx*=PLAYER_FRICTION;player.vy*=PLAYER_FRICTION;player.vx=clamp(player.vx,-PLAYER_MAX_SPEED,PLAYER_MAX_SPEED);player.vy=clamp(player.vy,-PLAYER_MAX_SPEED,PLAYER_MAX_SPEED);let nextRawWorldX=oldWorldX+player.vx;player.y=clamp(player.y+player.vy,0,GROUND_LEVEL-player.height);if(player.vx>0&&nextRawWorldX>=PLANET_WIDTH){player.worldX=nextRawWorldX%PLANET_WIDTH;worldOffsetX=(player.worldX-PLAYER_APPEAR_OFFSET+PLANET_WIDTH)%PLANET_WIDTH}else if(player.vx<0&&nextRawWorldX<0){player.worldX=(nextRawWorldX%PLANET_WIDTH+PLANET_WIDTH)%PLANET_WIDTH;worldOffsetX=(player.worldX-(CANVAS_WIDTH-PLAYER_APPEAR_OFFSET-player.width)+PLANET_WIDTH)%PLANET_WIDTH}else{player.worldX=(nextRawWorldX+PLANET_WIDTH)%PLANET_WIDTH;const screenEdgeBuffer=CANVAS_WIDTH/3.5;const playerCanvasX=(player.worldX-worldOffsetX+PLANET_WIDTH)%PLANET_WIDTH;if(playerCanvasX<screenEdgeBuffer&&player.vx<0){worldOffsetX=(worldOffsetX+player.vx+PLANET_WIDTH)%PLANET_WIDTH}else if(playerCanvasX>CANVAS_WIDTH-screenEdgeBuffer&&player.vx>0){worldOffsetX=(worldOffsetX+player.vx+PLANET_WIDTH)%PLANET_WIDTH}}worldOffsetX=(worldOffsetX+PLANET_WIDTH)%PLANET_WIDTH;if(player.isShieldActive){if(Date.now()-player.shieldActivationTime>PLAYER_SHIELD_DURATION){player.isShieldActive=false;if(audioInitialized&&synthShieldOff)synthShieldOff.triggerAttackRelease("A3",.1);deflectFrozenProjectiles()}}else{player.shieldEnergy=Math.min(PLAYER_MAX_SHIELD_ENERGY,player.shieldEnergy+(PLAYER_SHIELD_RECHARGE_RATE*(dt/1e3)))}if(player.isInvulnerable){player.invulnerabilityTimer-=dt;if(player.invulnerabilityTimer<=0)player.isInvulnerable=false}}
         function updateProjectiles(dt) { 
@@ -482,9 +580,128 @@
                 }
             });
         }
-        function updateEnemies(dt) { /* Minified */ for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(e.type==='Lander')updateLander(e,dt);if(e.type==='Mutant')updateMutant(e,dt);if(e.type==='Bomber')updateBomber(e,dt);e.worldX=(e.worldX+e.vx+PLANET_WIDTH)%PLANET_WIDTH;e.y+=e.vy;} }
+        function updateEnemies(dt) { 
+            for(let i=enemies.length-1; i>=0; i--) {
+                let e=enemies[i];
+                
+                if(e.type==='Lander') updateLander(e,dt);
+                if(e.type==='Mutant') updateMutant(e,dt);
+                if(e.type==='Bomber') updateBomber(e,dt);
+                if(e.type==='Destroyer') updateDestroyer(e,dt);
+                
+                // Apply movement
+                e.worldX=(e.worldX+e.vx+PLANET_WIDTH)%PLANET_WIDTH;
+                e.y+=e.vy;
+            } 
+        }
         function updateLander(l, dt) { /* Minified v2.32 */ const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER; l.stateTimer-=dt;switch(l.state){case'patrolling':l.vx=Math.sin(Date.now()*.001+l.worldX*.1)*LANDER_SPEED*.5*waveSpeedMultiplier;l.vy=Math.cos(Date.now()*.0008+l.worldX*.08)*LANDER_SPEED*.3*waveSpeedMultiplier;l.y=clamp(l.y,50,GROUND_LEVEL-l.height-HUMANOID_HEIGHT-20);if(l.stateTimer<=0){l.state='seeking';l.stateTimer=random(2e3,5e3)}break;case'seeking':if(!l.targetHuman||l.targetHuman.isAbducted||!l.targetHuman.isSafe)l.targetHuman=findClosestHuman(l);if(l.targetHuman){let dx=l.targetHuman.worldX-l.worldX;if(Math.abs(dx)>PLANET_WIDTH/2)dx=dx>0?dx-PLANET_WIDTH:dx+PLANET_WIDTH;const ang=Math.atan2(l.targetHuman.y-l.height-l.y,dx);l.vx=Math.cos(ang)*LANDER_SPEED*waveSpeedMultiplier;l.vy=Math.sin(ang)*LANDER_SPEED*waveSpeedMultiplier;if(getDistance(l.worldX,l.y,l.targetHuman.worldX,l.targetHuman.y-l.height)<l.height*1.5){l.state='abducting';l.isCarryingHuman=true;l.targetHuman.isAbducted=true;l.targetHuman.abductor=l;l.targetHuman.isSafe=false;if(audioInitialized&&synthAbduct)synthAbduct.triggerAttackRelease("8n",Tone.now()+.01);}}else{l.state='patrolling';l.stateTimer=random(3e3,6e3)}if(l.stateTimer<=0&&l.state==='seeking'){l.state='patrolling';l.stateTimer=random(3e3,6e3)}break;case'abducting':l.vx=0;l.vy=-LANDER_SPEED*.8*waveSpeedMultiplier;if(l.targetHuman){l.targetHuman.worldX=l.worldX;l.targetHuman.y=l.y+l.height/2}if(l.y<-l.height){if(l.targetHuman){transformToMutant(l.targetHuman,l.worldX,10);let idx=humanoids.indexOf(l.targetHuman);if(idx!==-1)humanoids.splice(idx,1)}enemies.splice(enemies.indexOf(l),1)}break;}}
         function updateMutant(m, dt) { /* Minified v2.26 */ const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER; const waveFireRate = MUTANT_FIRE_RATE * (1 - (currentWave - 1) * WAVE_FIRE_RATE_IMPROVEMENT); const pCX=worldToCanvasX(player.worldX);const mCX=worldToCanvasX(m.worldX);let dxToPlayer=player.worldX-m.worldX;if(Math.abs(dxToPlayer)>PLANET_WIDTH/2){dxToPlayer=dxToPlayer>0?dxToPlayer-PLANET_WIDTH:dxToPlayer+PLANET_WIDTH}const dyToPlayer=player.y-m.y;const ang=Math.atan2(dyToPlayer,dxToPlayer);m.vx=Math.cos(ang)*MUTANT_SPEED*waveSpeedMultiplier;m.vy=Math.sin(ang)*MUTANT_SPEED*waveSpeedMultiplier;if(Date.now()-(m.lastShotTime||0)>waveFireRate){projectiles.enemy.push({type:'enemy_projectile',worldX:m.worldX+m.width/2,y:m.y+m.height/2,vx:Math.cos(ang)*ENEMY_PROJECTILE_SPEED,vy:Math.sin(ang)*ENEMY_PROJECTILE_SPEED,width:ENEMY_PROJECTILE_WIDTH,height:ENEMY_PROJECTILE_HEIGHT,color:'#FF8800'});m.lastShotTime=Date.now();if(audioInitialized&&synthEnemyShoot)synthEnemyShoot.triggerAttackRelease("A3","8n")}}
+        function updateDestroyer(d, dt) {
+            // Ensure initialization of state if not already done
+            if (!d.state) {
+                d.state = 'patrolling';
+                d.stateTimer = random(2000, 4000);
+                d.lastShotTime = Date.now();
+            }
+            
+            // Apply wave-based difficulty scaling
+            const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER;
+            const waveFireRate = DESTROYER_FIRE_RATE * (1 - (currentWave - 1) * WAVE_FIRE_RATE_IMPROVEMENT);
+            
+            // Decrease state timer
+            d.stateTimer -= dt;
+            
+            // Hornet-like movement: much more vertical than horizontal (bobbing up and down)
+            switch(d.state) {
+                case 'patrolling':
+                    // Primarily vertical motion (hornet bobbing) with minimal horizontal movement
+                    // Use a smaller coefficient for horizontal movement and larger for vertical
+                    d.vx = Math.cos(Date.now() * 0.0005 + d.worldX * 0.03) * DESTROYER_SPEED * 0.3 * waveSpeedMultiplier;
+                    d.vy = Math.sin(Date.now() * 0.003 + d.worldX * 0.05) * DESTROYER_SPEED * 1.2 * waveSpeedMultiplier;
+                    
+                    // Keep within reasonable height bounds
+                    d.y = clamp(d.y, 30, CANVAS_HEIGHT / 2);
+                    
+                    // Occasionally switch to targeting state
+                    if (d.stateTimer <= 0) {
+                        d.state = 'targeting';
+                        d.stateTimer = random(1500, 2500); // Shorter targeting time
+                    }
+                    
+                    // Periodically fire even in patrol mode
+                    if (Date.now() - (d.lastShotTime || 0) > waveFireRate * 1.5) {
+                        fireLaser(d);
+                    }
+                    
+                    break;
+                    
+                case 'targeting':
+                    // Calculate angle to player for targeting
+                    let dxToPlayer = player.worldX - d.worldX;
+                    if (Math.abs(dxToPlayer) > PLANET_WIDTH / 2) {
+                        dxToPlayer = dxToPlayer > 0 ? dxToPlayer - PLANET_WIDTH : dxToPlayer + PLANET_WIDTH;
+                    }
+                    const dyToPlayer = player.y - d.y;
+                    
+                    // Move towards player's position but with more vertical variance (hornet-like)
+                    const angleToPlayer = Math.atan2(dyToPlayer, dxToPlayer);
+                    d.vx = Math.cos(angleToPlayer) * DESTROYER_SPEED * 0.4 * waveSpeedMultiplier;
+                    d.vy = Math.sin(angleToPlayer) * DESTROYER_SPEED * 0.7 * waveSpeedMultiplier;
+                    
+                    // Add pronounced vertical bobbing movement to make it more hornet-like
+                    d.vy += Math.sin(Date.now() * 0.006) * DESTROYER_SPEED * 0.6 * waveSpeedMultiplier;
+                    
+                    // Fire laser beam when cooldown complete
+                    if (Date.now() - (d.lastShotTime || 0) > waveFireRate) {
+                        fireLaser(d);
+                    }
+                    
+                    // Switch back to patrolling after a while
+                    if (d.stateTimer <= 0) {
+                        d.state = 'patrolling';
+                        d.stateTimer = random(2000, 4000);
+                    }
+                    break;
+            }
+        }
+        
+        // Helper function to fire laser from Destroyer
+        function fireLaser(d) {
+            // Center position for both lasers
+            const laserX = d.worldX + d.width / 2 - DESTROYER_LASER_WIDTH / 2;
+            
+            // Create downward laser beam
+            projectiles.enemy.push({
+                type: 'laser',
+                worldX: laserX,
+                y: d.y + d.height,  // Position at bottom of ship
+                vx: 0,  // Laser goes straight down
+                vy: DESTROYER_LASER_SPEED,  // Positive velocity for downward movement
+                width: DESTROYER_LASER_WIDTH,
+                height: DESTROYER_LASER_HEIGHT,
+                color: '#FF0000' // Red laser beam
+            });
+            
+            // Create upward laser beam
+            projectiles.enemy.push({
+                type: 'laser',
+                worldX: laserX,
+                y: d.y - DESTROYER_LASER_HEIGHT,  // Position at top of ship
+                vx: 0,  // Laser goes straight up
+                vy: -DESTROYER_LASER_SPEED,  // Negative velocity for upward movement
+                width: DESTROYER_LASER_WIDTH,
+                height: DESTROYER_LASER_HEIGHT,
+                color: '#FF0000' // Red laser beam
+            });
+            
+            d.lastShotTime = Date.now();
+            
+            // Play laser sound
+            if (audioInitialized && synthEnemyShoot) {
+                synthEnemyShoot.triggerAttackRelease("E4", "16n");
+            }
+        }
+        
         function updateBomber(b, dt) { /* Bomber alien - improved AI */
             const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER;
             const effectiveBomberSpeed = BOMBER_SPEED * waveSpeedMultiplier;
@@ -580,7 +797,45 @@
         }
         function findClosestHuman(e){ /* Minified */ let c=null,mD=Infinity;humanoids.forEach(h=>{if(!h.isAbducted&&h.isSafe){let dX=Math.abs(h.worldX-e.worldX);let dist=Math.min(dX,PLANET_WIDTH-dX);if(dist<mD){mD=dist;c=h;}}});return c;}
         function transformToMutant(human,x,y){ /* Minified */ enemies.push({type:'Mutant',worldX:x,y:y,width:MUTANT_WIDTH,height:MUTANT_HEIGHT,vx:0,vy:0,color:'#FF6347',lastShotTime:0});createExplosion(x,y,'#FF6347');}
-        function updateHumanoids(dt){ /* Minified */ humanoids.forEach(h=>{if(h.isFalling){h.y+=HUMANOID_FALL_SPEED;if(h.y>=GROUND_LEVEL-h.height){h.y=GROUND_LEVEL-h.height;h.isFalling=false;h.isSafe=true;}}});}
+        function updateHumanoids(dt){ 
+            humanoids.forEach(h => {
+                // Handle falling humanoids
+                if(h.isFalling) {
+                    // Open the parachute as soon as they start falling
+                    if (!h.parachuteOpened) {
+                        h.parachuteOpened = true;
+                    }
+                    
+                    // Fall at a slower speed when parachute is open
+                    h.y += HUMANOID_FALL_SPEED;
+                    
+                    // Animate arm waving while falling
+                    h.armAngle += h.armWaveSpeed * h.armDirection * (dt / 30);
+                    
+                    // Change arm direction when reaching limits
+                    if (Math.abs(h.armAngle) > 0.5) {
+                        h.armDirection *= -1;
+                    }
+                    
+                    // Land safely on the ground
+                    if (h.y >= GROUND_LEVEL - h.height) {
+                        h.y = GROUND_LEVEL - h.height;
+                        h.isFalling = false;
+                        h.isSafe = true;
+                        h.parachuteOpened = false;
+                        h.armAngle = 0; // Reset arm position
+                    }
+                } else if (h.isAbducted) {
+                    // When abducted, wave arms more frantically
+                    h.armAngle += h.armWaveSpeed * 1.5 * h.armDirection * (dt / 30);
+                    
+                    // Change direction more frequently
+                    if (Math.abs(h.armAngle) > 0.3) {
+                        h.armDirection *= -1;
+                    }
+                }
+            });
+        }
         function updateParticles(dt){ /* Minified */ for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.life-=dt;if(p.life<=0){particles.splice(i,1);continue;}if(p.type==='explosion_flash'){p.radius=p.maxRadius*(1-(p.life/p.initialLife));p.alpha=0.8*(p.life/p.initialLife);}else{p.vy+=0.05;p.vx*=0.99;if(typeof p.worldX !=='undefined'){p.worldX=(p.worldX+p.vx+PLANET_WIDTH)%PLANET_WIDTH;}else{p.x+=p.vx;}p.y+=p.vy;p.alpha=p.life/p.initialLife;}}}
         function createParticleEffect(x,y,color,count,speedRange,isScreenSpace=false, life = EXPLOSION_PARTICLE_LIFE, particleType = 'debris'){ /* Minified */ for(let i=0;i<count;i++){let p={y:y,vx:random(-speedRange,speedRange),vy:random(-speedRange-1,speedRange-3),size:random(1,4),color:color,life:random(life*0.5,life),initialLife:life, alpha:1.0, type: particleType};if(isScreenSpace){p.x=x;}else{p.worldX=x;}particles.push(p);}}
         function createExplosion(worldX, y, baseColor, particleCount = EXPLOSION_PARTICLE_COUNT, flashRadius = EXPLOSION_FLASH_MAX_RADIUS, particleLife = EXPLOSION_PARTICLE_LIFE, flashDuration = EXPLOSION_FLASH_DURATION, createShrapnel = false) {
@@ -669,7 +924,37 @@
             actionButtonSubtext.textContent="Click or press Enter";
             messageOverlay.style.display='flex';
         }
-        function checkWaveCompletion(){ /* Minified */ const activeHostiles=enemies.filter(e=>e.type==='Lander'||e.type==='Mutant'||e.type==='Bomber').length;if(gameRunning&&!gameOverState&&activeHostiles===0&&humanoids.length>0){gameRunning=false;currentWave++;score+=humanoids.length*100;if(audioInitialized&&synthWaveClear)synthWaveClear.triggerAttackRelease(["C4","E4","G4"],"8n","+0.1");mainMessageTitle.textContent=`Wave ${currentWave-1} Cleared!`;secondaryMessageContent.textContent=`Humanoid Bonus: ${humanoids.length*100} points!`;actionButtonMainText.textContent="Next Wave";actionButtonSubtext.textContent="Click or press Enter";messageOverlay.style.display='flex'}else if(gameRunning&&!gameOverState&&humanoids.length===0&&activeHostiles>0){triggerGameOver();mainMessageTitle.textContent="Planet Lost!";secondaryMessageContent.innerHTML=`All humanoids abducted. Final Score: <span class="final-score-value">${score}</span>`;}}
+        function checkWaveCompletion(){ 
+            // Count all hostile enemy types including the new Destroyer
+            const activeHostiles = enemies.filter(e => 
+                e.type === 'Lander' || 
+                e.type === 'Mutant' || 
+                e.type === 'Bomber' || 
+                e.type === 'Destroyer'
+            ).length;
+            
+            if (gameRunning && !gameOverState && activeHostiles === 0 && humanoids.length > 0) {
+                // Wave cleared
+                gameRunning = false;
+                currentWave++;
+                score += humanoids.length * 100;
+                
+                if (audioInitialized && synthWaveClear) {
+                    synthWaveClear.triggerAttackRelease(["C4", "E4", "G4"], "8n", "+0.1");
+                }
+                
+                mainMessageTitle.textContent = `Wave ${currentWave-1} Cleared!`;
+                secondaryMessageContent.textContent = `Humanoid Bonus: ${humanoids.length*100} points!`;
+                actionButtonMainText.textContent = "Next Wave";
+                actionButtonSubtext.textContent = "Click or press Enter";
+                messageOverlay.style.display = 'flex';
+            } else if (gameRunning && !gameOverState && humanoids.length === 0 && activeHostiles > 0) {
+                // All humanoids lost
+                triggerGameOver();
+                mainMessageTitle.textContent = "Planet Lost!";
+                secondaryMessageContent.innerHTML = `All humanoids abducted. Final Score: <span class="final-score-value">${score}</span>`;
+            }
+        }
         function draw(){ /* Minified */ if(!ctx)return;ctx.fillStyle='#000510';ctx.fillRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);stars.forEach(s=>{const sX=(s.x-(worldOffsetX*s.parallax)%CANVAS_WIDTH+CANVAS_WIDTH)%CANVAS_WIDTH;ctx.fillStyle=`rgba(200,220,255,${Math.max(.3,s.size/1.5*.8)})`;ctx.fillRect(sX,s.y,s.size,s.size)});ctx.strokeStyle='#0088AA';ctx.lineWidth=1.5;for(let j=0;j<3;j++){ctx.beginPath();let pF=.2+j*.2,a=15+j*10,f=.01+j*.005;for(let x=0;x<CANVAS_WIDTH;x++){let wX=x+worldOffsetX*pF,tY=GROUND_LEVEL+10+j*10+Math.sin(wX*f)*a;if(x===0)ctx.moveTo(x,tY);else ctx.lineTo(x,tY)}ctx.globalAlpha=.3+j*.2;ctx.stroke()}ctx.globalAlpha=1;humanoids.forEach(h=>drawWrappedEntity(ctx,h));projectiles.player.forEach(p=>drawWrappedEntity(ctx,p));projectiles.enemy.forEach(p=>drawWrappedEntity(ctx,p));enemies.forEach(e=>drawWrappedEntity(ctx,e));if(!player.hyperspaceActive&&player.worldX!==undefined){ctx.globalAlpha=(player.isInvulnerable&&Math.floor(player.invulnerabilityTimer/100)%2===0)?.5:1;drawWrappedEntity(ctx,player);if(player.isShieldActive){const pCX=worldToCanvasX(player.worldX);ctx.strokeStyle='#00FFFF';ctx.lineWidth=2;ctx.beginPath();ctx.arc(pCX+player.width/2,player.y+player.height/2,player.width*SHIELD_RADIUS_MULTIPLIER,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(0,255,255,0.1)';ctx.fill()}ctx.globalAlpha=1}particles.forEach(p=>{ctx.globalAlpha=p.alpha;let pCX=typeof p.worldX !=='undefined'?worldToCanvasX(p.worldX):p.x;if(p.type==='explosion_flash'){ctx.beginPath();ctx.arc(pCX,p.y,p.radius,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill()}else{ctx.fillStyle=p.color;ctx.fillRect(pCX,p.y,p.size,p.size)}});ctx.globalAlpha=1;drawRadar()}
         function drawWrappedEntity(ctx, entity) { /* Minified */ if(!entity||typeof entity.worldX==='undefined'||typeof entity.y==='undefined'||typeof entity.width==='undefined'||typeof entity.height==='undefined'){return}const canvasX=worldToCanvasX(entity.worldX);drawSpecificEntity(ctx,entity,canvasX,entity.y);if(canvasX<entity.width+20){drawSpecificEntity(ctx,entity,canvasX+PLANET_WIDTH,entity.y)}if(canvasX+entity.width>CANVAS_WIDTH-20){drawSpecificEntity(ctx,entity,canvasX-PLANET_WIDTH,entity.y)}}
         function drawSpecificEntity(eCtx,e,cX,cY){ /* Minified */ if(cX+e.width<0||cX>CANVAS_WIDTH||cY+e.height<0||cY>CANVAS_HEIGHT){return}eCtx.fillStyle=e.color;eCtx.strokeStyle=e.color;eCtx.lineWidth=1.5;switch(e.type){case'player':
@@ -742,9 +1027,9 @@
             }
             break;case'Lander':
             // Jellyfish-like Abductor (dome top with tentacles)
-            // Draw the dome top
+            // Draw the dome top (with increased thickness)
             eCtx.beginPath();
-            eCtx.ellipse(cX + e.width/2, cY + e.height*0.4, e.width/2, e.height*0.4, 0, Math.PI, 0);
+            eCtx.ellipse(cX + e.width/2, cY + e.height*0.45, e.width/2, e.height*0.45, 0, Math.PI, 0);
             eCtx.fill();
             
             // Draw the tentacles with direct center positioning
@@ -808,6 +1093,54 @@
             const radius = flatTopWidth/2;
             eCtx.arc(centerX, flatTopY, radius, Math.PI, 0, false); // Half circle, open at bottom
             eCtx.stroke();
+            break;case'Destroyer':
+            // Save the current state
+            eCtx.save();
+            
+            // Reset all properties that could be causing artifacts
+            eCtx.globalAlpha = 1.0;
+            eCtx.globalCompositeOperation = 'source-over';
+            eCtx.shadowBlur = 0;
+            eCtx.shadowColor = 'transparent';
+            eCtx.shadowOffsetX = 0;
+            eCtx.shadowOffsetY = 0;
+            
+            // Clear a larger area to ensure no artifacts remain
+            eCtx.clearRect(cX - 5, cY - 5, e.width + 10, e.height + 10);
+            
+            // Reset stroke properties
+            eCtx.strokeStyle = 'transparent';
+            eCtx.lineWidth = 0;
+            
+            // Set color for the Destroyer - use only the base color
+            eCtx.fillStyle = e.color;
+            
+            // True barbell shape - small circles at ends with thin connecting line
+            
+            // Make circles much smaller (1/3 of height)
+            const circleRadius = e.height * 0.33;
+            const centerY = cY + e.height/2;
+            
+            // Position circles at the far edges of the width
+            const leftCircleX = cX + circleRadius;
+            const rightCircleX = cX + e.width - circleRadius;
+            
+            // Draw thin connecting line between circles
+            const lineHeight = e.height * 0.15; // Very thin line
+            eCtx.fillRect(leftCircleX, centerY - lineHeight/2, rightCircleX - leftCircleX, lineHeight);
+            
+            // Draw left circle
+            eCtx.beginPath();
+            eCtx.arc(leftCircleX, centerY, circleRadius, 0, Math.PI * 2);
+            eCtx.fill();
+            
+            // Draw right circle
+            eCtx.beginPath();
+            eCtx.arc(rightCircleX, centerY, circleRadius, 0, Math.PI * 2);
+            eCtx.fill();
+            
+            // Restore the context state when done
+            eCtx.restore();
             break;case'Bomber':eCtx.fillStyle = e.color;
             eCtx.beginPath();
             // Peak is shifted forward (to the right by default) by 1/4 of width from center
@@ -829,8 +1162,153 @@
             eCtx.fill();
 
             break;
-        case'humanoid':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height*.25,e.width/2.5,0,Math.PI*2);eCtx.fill();eCtx.fillRect(cX+e.width*.3,cY+e.height*.4,e.width*.4,e.height*.6);if(e.isFalling){eCtx.strokeStyle='#CCCCCC';eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX,cY-e.height*.5);eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY-e.height*.5);eCtx.stroke()}break;
-        case'player_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY+e.height);eCtx.closePath();eCtx.fill();break;case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
+        case'humanoid':
+            eCtx.fillStyle=e.color;
+            
+            // Draw head
+            eCtx.beginPath();
+            eCtx.arc(cX+e.width/2, cY+e.height*.25, e.width/2.5, 0, Math.PI*2);
+            eCtx.fill();
+            
+            // Draw body
+            eCtx.fillRect(cX+e.width*.3, cY+e.height*.4, e.width*.4, e.height*.6);
+            
+            // Draw MUCH BIGGER, more visible arms (same color as body)
+            
+            if (e.isFalling || e.isAbducted) {
+                // Left arm with animation - MUCH bigger
+                eCtx.save();
+                eCtx.translate(cX+e.width*.3, cY+e.height*.45);
+                eCtx.rotate(-Math.PI/4 + e.armAngle);
+                eCtx.fillRect(-e.width*.05, 0, e.width*.35, e.height*.5); // Much bigger
+                eCtx.restore();
+                
+                // Right arm with animation - MUCH bigger
+                eCtx.save();
+                eCtx.translate(cX+e.width*.7, cY+e.height*.45);
+                eCtx.rotate(Math.PI/4 - e.armAngle);
+                eCtx.fillRect(-e.width*.15, 0, e.width*.35, e.height*.5); // Much bigger
+                eCtx.restore();
+            } else {
+                // Static arms when not falling or abducted - MUCH bigger
+                // Left arm - extend much further outward
+                eCtx.save();
+                eCtx.translate(cX+e.width*.3, cY+e.height*.45);
+                eCtx.rotate(-Math.PI/4); // Horizontal angle
+                eCtx.fillRect(-e.width*.05, 0, e.width*.4, e.height*.4); // Much bigger
+                eCtx.restore();
+                
+                // Right arm - extend much further outward
+                eCtx.save();
+                eCtx.translate(cX+e.width*.7, cY+e.height*.45);
+                eCtx.rotate(Math.PI/4); // Horizontal angle
+                eCtx.fillRect(-e.width*.2, 0, e.width*.4, e.height*.4); // Much bigger
+                eCtx.restore();
+            }
+            
+            // Draw parachute when falling
+            if (e.isFalling && e.parachuteOpened) {
+                // Parachute strings
+                eCtx.strokeStyle='#CCCCCC';
+                eCtx.beginPath();
+                eCtx.moveTo(cX+e.width/2, cY);
+                eCtx.lineTo(cX, cY-e.height*1.2);
+                eCtx.moveTo(cX+e.width/2, cY);
+                eCtx.lineTo(cX+e.width, cY-e.height*1.2);
+                eCtx.stroke();
+                
+                // Parachute dome
+                eCtx.beginPath();
+                eCtx.strokeStyle='#DDDDDD';
+                eCtx.fillStyle='rgba(200, 200, 200, 0.3)';
+                eCtx.arc(cX+e.width/2, cY-e.height*1.2, e.width*2, Math.PI, 0, false);
+                eCtx.fill();
+                eCtx.stroke();
+            }
+            break;
+        case'player_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width*.7,cY+e.height);eCtx.closePath();eCtx.fill();break;
+        
+        case'laser':
+            // Draw a bright laser bullet with rounded ends
+            
+            // Create a bright glowing effect
+            eCtx.save();
+            
+            // Outer glow (larger, more transparent)
+            eCtx.globalAlpha = 0.3;
+            eCtx.fillStyle = '#FFAA00'; // Orange-yellow glow
+            
+            // Draw rounded rectangle with arc caps for outer glow
+            eCtx.beginPath();
+            const glowRadius = e.height * 1.5;
+            const glowWidth = e.width + glowRadius * 2;
+            
+            // Left cap (semicircle)
+            eCtx.arc(cX + glowRadius, cY + e.height/2, glowRadius, Math.PI/2, Math.PI*1.5);
+            
+            // Top line
+            eCtx.lineTo(cX + glowWidth - glowRadius, cY);
+            
+            // Right cap (semicircle)
+            eCtx.arc(cX + glowWidth - glowRadius, cY + e.height/2, glowRadius, Math.PI*1.5, Math.PI/2);
+            
+            // Bottom line
+            eCtx.lineTo(cX + glowRadius, cY + e.height);
+            
+            eCtx.closePath();
+            eCtx.fill();
+            
+            // Middle layer (medium brightness)
+            eCtx.globalAlpha = 0.6;
+            eCtx.fillStyle = '#FFDD00';
+            
+            // Draw rounded rectangle for middle layer
+            eCtx.beginPath();
+            const midRadius = e.height * 1;
+            const midWidth = e.width + midRadius;
+            
+            // Left cap
+            eCtx.arc(cX + midRadius, cY + e.height/2, midRadius, Math.PI/2, Math.PI*1.5);
+            
+            // Top line
+            eCtx.lineTo(cX + midWidth, cY);
+            
+            // Right cap
+            eCtx.arc(cX + midWidth, cY + e.height/2, midRadius, Math.PI*1.5, Math.PI/2);
+            
+            // Bottom line
+            eCtx.lineTo(cX + midRadius, cY + e.height);
+            
+            eCtx.closePath();
+            eCtx.fill();
+            
+            // Core (bright white)
+            eCtx.globalAlpha = 1.0;
+            eCtx.fillStyle = '#FFFFFF';
+            
+            // Draw rounded rectangle for core
+            eCtx.beginPath();
+            const coreRadius = e.height / 2;
+            
+            // Left cap
+            eCtx.arc(cX + coreRadius, cY + coreRadius, coreRadius, Math.PI, 0, true);
+            
+            // Right side
+            eCtx.lineTo(cX + e.width, cY + coreRadius);
+            
+            // Right cap
+            eCtx.arc(cX + e.width, cY + coreRadius, coreRadius, 0, Math.PI, true);
+            
+            // Left side
+            eCtx.lineTo(cX + coreRadius, cY + e.height);
+            
+            eCtx.closePath();
+            eCtx.fill();
+            
+            eCtx.restore();
+            break;
+            
+        case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
         function drawRadar(){ /* Minified */ radarDiv.innerHTML='';if(!player.worldX&&player.worldX!==0)return;const rS=radarDiv.offsetWidth/PLANET_WIDTH;const rH=radarDiv.offsetHeight;let pRX=player.worldX*rS;let pD=document.createElement('div');pD.className='radar-dot player-dot';pD.style.left=`${pRX}px`;pD.style.top=`${rH/2}px`;radarDiv.appendChild(pD);humanoids.forEach(h=>{if(!h.isAbducted){let hRX=h.worldX*rS;let hD=document.createElement('div');hD.className='radar-dot human-dot';hD.style.left=`${hRX}px`;hD.style.top=`${rH-4}px`;radarDiv.appendChild(hD)}});enemies.forEach(e=>{let eRX=e.worldX*rS;let rTop=e.y/CANVAS_HEIGHT*rH;rTop=clamp(rTop,2,rH-2);let eD=document.createElement('div');eD.className=`radar-dot ${e.type==='Mutant'?'mutant-dot':'enemy-dot'}`;eD.style.left=`${eRX}px`;eD.style.top=`${rTop}px`;radarDiv.appendChild(eD)})}
         function updateUI(){ /* Minified */ scoreUI.textContent=score;livesUI.textContent=lives;bombsUI.textContent=smartBombs;waveUI.textContent=currentWave;if(player.shieldEnergy!==undefined){shieldFillUI.style.width=`${player.shieldEnergy/PLAYER_MAX_SHIELD_ENERGY*100}%`}}
         let lastTime=0;function gameLoop(timestamp){let dt=timestamp-lastTime;if(!dt||dt>100)dt=16.67;lastTime=timestamp;if(gameRunning&&!gameOverState){handleInput();updatePlayer(dt);updateProjectiles(dt);updateEnemies(dt);updateHumanoids(dt);updateParticles(dt);collisionDetection();checkWaveCompletion()}draw();if(gameRunning||gameOverState||!gameRunning&&!gameOverState&&messageOverlay.style.display==='flex'){updateUI()}requestAnimationFrame(gameLoop)}
@@ -898,6 +1376,30 @@
                 
                 // Use the exact same drawing function as in the game
                 drawSpecificEntity(bomberCtx, mockBomber, centerX, centerY);
+            }
+            
+            // Draw Destroyer preview - match exactly how it appears in game
+            const destroyerCanvas = document.getElementById('destroyer-preview');
+            if (destroyerCanvas) {
+                // Get a fresh context and clear everything
+                const ctx = destroyerCanvas.getContext('2d');
+                ctx.clearRect(0, 0, destroyerCanvas.width, destroyerCanvas.height);
+                
+                // Create a mock destroyer that matches the game entity
+                const mockDestroyer = {
+                    type: 'Destroyer',
+                    width: DESTROYER_WIDTH,
+                    height: DESTROYER_HEIGHT,
+                    color: '#0088FF'
+                };
+                
+                // Position in the center of the preview
+                const centerX = (destroyerCanvas.width - mockDestroyer.width) / 2;
+                const centerY = (destroyerCanvas.height - mockDestroyer.height) / 2;
+                
+                // Draw using the exact same drawing function as in the game
+                // This ensures it looks identical
+                drawSpecificEntity(ctx, mockDestroyer, centerX, centerY);
             }
         }
         
