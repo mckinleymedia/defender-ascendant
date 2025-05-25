@@ -260,8 +260,8 @@
 
         // Player
         const PLAYER_WIDTH = 36; const PLAYER_HEIGHT = 18; const PLAYER_THRUST = 0.15;
-        const PLAYER_MAX_SPEED = 3.5; const PLAYER_FRICTION = 0.95; const PLAYER_FIRE_RATE = 180;
-        const PLAYER_PROJECTILE_SPEED = 6; const PLAYER_PROJECTILE_WIDTH = 12; const PLAYER_PROJECTILE_HEIGHT = 4;
+        const PLAYER_MAX_SPEED = 4.5; const PLAYER_FRICTION = 0.95; const PLAYER_FIRE_RATE = 160; // Increased speed and fire rate
+        const PLAYER_PROJECTILE_SPEED = 8; const PLAYER_PROJECTILE_WIDTH = 12; const PLAYER_PROJECTILE_HEIGHT = 4; // Faster projectiles
         const PLAYER_MAX_SHIELD_ENERGY = 100; const PLAYER_SHIELD_DURATION = 2500;
         const PLAYER_SHIELD_RECHARGE_RATE = 2; const PLAYER_SHIELD_ACTIVATION_COST = 35;
         const PLAYER_INVULNERABILITY_DURATION = 2000; const HYPERSPACE_COOLDOWN = 5000;
@@ -271,28 +271,28 @@
 
         // Humanoids & Enemies
         const HUMANOID_COUNT_PER_WAVE_MULTIPLIER = 8; const HUMANOID_WIDTH = 10; const HUMANOID_HEIGHT = 18;
-        const HUMANOID_FALL_SPEED = 2; const HUMANOID_RESCUE_POINTS = 500;
-        const LANDER_WIDTH = 32; const LANDER_HEIGHT = 24; const LANDER_SPEED = 0.9; const LANDER_POINTS = 150;
-        const MUTANT_WIDTH = 34; const MUTANT_HEIGHT = 26; const MUTANT_SPEED = 1.2;
+        const HUMANOID_FALL_SPEED = 2.8; const HUMANOID_RESCUE_POINTS = 500; // Faster falling humanoids
+        const LANDER_WIDTH = 32; const LANDER_HEIGHT = 24; const LANDER_SPEED = 1.4; const LANDER_POINTS = 150; // Faster Landers
+        const MUTANT_WIDTH = 34; const MUTANT_HEIGHT = 26; const MUTANT_SPEED = 1.8; // Faster Mutants
         const MUTANT_FIRE_RATE = 1500; const MUTANT_POINTS = 300;
         
         // Destroyer enemy (appears in level 3+)
         const DESTROYER_WIDTH = 40; const DESTROYER_HEIGHT = 25;
-        const DESTROYER_SPEED = 0.9; // Slower but has powerful lasers
+        const DESTROYER_SPEED = 1.4; // Increased speed while maintaining powerful lasers
         const DESTROYER_FIRE_RATE = 2000; // Fires less frequently
         const DESTROYER_POINTS = 350; // Worth more points
         const DESTROYER_LASER_WIDTH = 30; // Long laser beams
         const DESTROYER_LASER_HEIGHT = 2; // Half as tall as before
-        const DESTROYER_LASER_SPEED = 7; // Fast moving laser
-        const BOMBER_WIDTH = 50; const BOMBER_HEIGHT = 14; const BOMBER_SPEED = 0.6; 
+        const DESTROYER_LASER_SPEED = 9; // Even faster laser beams
+        const BOMBER_WIDTH = 50; const BOMBER_HEIGHT = 14; const BOMBER_SPEED = 1.0; // Faster Bombers
         const BOMBER_FIRE_RATE = 2000; const BOMBER_POINTS = 200;
-        const BOMBER_BOMB_SPEED = 1.5; const BOMBER_BOMB_WIDTH = 12; const BOMBER_BOMB_HEIGHT = 12;
+        const BOMBER_BOMB_SPEED = 2.2; const BOMBER_BOMB_WIDTH = 12; const BOMBER_BOMB_HEIGHT = 12; // Faster bombs
         const BOMBER_BOMB_DROP_ACCURACY = 20; // How close (x-axis) bomber needs to be to player to start bombing run
         const BOMBER_TARGET_ALTITUDE_OFFSET = 100; // Desired altitude above player for bombing run
         const BOMB_FUSE_DISTANCE = 150; // Distance bomb travels before exploding
-        const WAVE_SPEED_MULTIPLIER = 0.08; // Speed increases by 8% per wave
+        const WAVE_SPEED_MULTIPLIER = 0.1; // Speed increases by 10% per wave for more challenging progression
         const WAVE_FIRE_RATE_IMPROVEMENT = 0.05; // Fire rate improves by 5% per wave
-        const ENEMY_PROJECTILE_SPEED = 2.5; const ENEMY_PROJECTILE_WIDTH = 8; const ENEMY_PROJECTILE_HEIGHT = 8;
+        const ENEMY_PROJECTILE_SPEED = 3.5; const ENEMY_PROJECTILE_WIDTH = 8; const ENEMY_PROJECTILE_HEIGHT = 8; // Faster enemy projectiles
 
         // Explosion
         const EXPLOSION_PARTICLE_COUNT = 25; const EXPLOSION_FLASH_MAX_RADIUS = 50;
@@ -1311,7 +1311,56 @@
         case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
         function drawRadar(){ /* Minified */ radarDiv.innerHTML='';if(!player.worldX&&player.worldX!==0)return;const rS=radarDiv.offsetWidth/PLANET_WIDTH;const rH=radarDiv.offsetHeight;let pRX=player.worldX*rS;let pD=document.createElement('div');pD.className='radar-dot player-dot';pD.style.left=`${pRX}px`;pD.style.top=`${rH/2}px`;radarDiv.appendChild(pD);humanoids.forEach(h=>{if(!h.isAbducted){let hRX=h.worldX*rS;let hD=document.createElement('div');hD.className='radar-dot human-dot';hD.style.left=`${hRX}px`;hD.style.top=`${rH-4}px`;radarDiv.appendChild(hD)}});enemies.forEach(e=>{let eRX=e.worldX*rS;let rTop=e.y/CANVAS_HEIGHT*rH;rTop=clamp(rTop,2,rH-2);let eD=document.createElement('div');eD.className=`radar-dot ${e.type==='Mutant'?'mutant-dot':'enemy-dot'}`;eD.style.left=`${eRX}px`;eD.style.top=`${rTop}px`;radarDiv.appendChild(eD)})}
         function updateUI(){ /* Minified */ scoreUI.textContent=score;livesUI.textContent=lives;bombsUI.textContent=smartBombs;waveUI.textContent=currentWave;if(player.shieldEnergy!==undefined){shieldFillUI.style.width=`${player.shieldEnergy/PLAYER_MAX_SHIELD_ENERGY*100}%`}}
-        let lastTime=0;function gameLoop(timestamp){let dt=timestamp-lastTime;if(!dt||dt>100)dt=16.67;lastTime=timestamp;if(gameRunning&&!gameOverState){handleInput();updatePlayer(dt);updateProjectiles(dt);updateEnemies(dt);updateHumanoids(dt);updateParticles(dt);collisionDetection();checkWaveCompletion()}draw();if(gameRunning||gameOverState||!gameRunning&&!gameOverState&&messageOverlay.style.display==='flex'){updateUI()}requestAnimationFrame(gameLoop)}
+        // Track game time and frame timing
+        let lastTime = 0;
+        const TARGET_FRAME_TIME = 16.67; // ~60 FPS in ms
+        let accumulatedTime = 0;
+        
+        // Time-step based game loop for consistent speed across platforms
+        function gameLoop(timestamp) {
+            // Calculate the time delta in milliseconds
+            let realDt = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            // Cap the delta time to prevent huge jumps if game is backgrounded
+            // or the system is under heavy load
+            if (!realDt || realDt > 100) realDt = TARGET_FRAME_TIME;
+            
+            // Accumulate time and update with fixed time steps
+            accumulatedTime += realDt;
+            
+            // Process the game logic in fixed time step increments
+            // This ensures consistent movement regardless of frame rate
+            const maxSteps = 3; // Prevent spiral of death in very slow scenarios
+            let steps = 0;
+            
+            while (accumulatedTime >= TARGET_FRAME_TIME && steps < maxSteps) {
+                // Fixed time step for physics/game updates
+                if (gameRunning && !gameOverState) {
+                    handleInput();
+                    updatePlayer(TARGET_FRAME_TIME);
+                    updateProjectiles(TARGET_FRAME_TIME);
+                    updateEnemies(TARGET_FRAME_TIME);
+                    updateHumanoids(TARGET_FRAME_TIME);
+                    updateParticles(TARGET_FRAME_TIME);
+                    collisionDetection();
+                    checkWaveCompletion();
+                }
+                
+                accumulatedTime -= TARGET_FRAME_TIME;
+                steps++;
+            }
+            
+            // Draw is performed once per frame regardless of the number of update steps
+            draw();
+            
+            if (gameRunning || gameOverState || 
+                (!gameRunning && !gameOverState && messageOverlay.style.display === 'flex')) {
+                updateUI();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
         
         // Draw enemy previews in the enemy key section using the exact same drawing code as the game
         function drawEnemyPreviews() {
