@@ -563,12 +563,28 @@
                     }
                 }
                 
-                // Handle shrapnel lifetime
-                if(p.type === 'shrapnel' && typeof p.life !== 'undefined') {
-                    p.life -= dt;
-                    if(p.life <= 0) {
-                        projectiles.enemy.splice(i,1);
-                        return;
+                // Handle shrapnel distance limit and lifetime
+                if(p.type === 'shrapnel') {
+                    // Check distance traveled
+                    if (p.initialX !== undefined && p.initialY !== undefined && p.maxDistance !== undefined) {
+                        const dx = p.worldX - p.initialX;
+                        const dy = p.y - p.initialY;
+                        const distanceTraveled = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Remove if reached max distance
+                        if (distanceTraveled >= p.maxDistance) {
+                            projectiles.enemy.splice(i, 1);
+                            return;
+                        }
+                    }
+                    
+                    // Also check lifetime as a backup
+                    if (typeof p.life !== 'undefined') {
+                        p.life -= dt;
+                        if (p.life <= 0) {
+                            projectiles.enemy.splice(i, 1);
+                            return;
+                        }
                     }
                 }
                 
@@ -884,9 +900,10 @@
             
             // Create damaging shrapnel if this is a bomb explosion
             if(createShrapnel) {
-                const SHRAPNEL_COUNT = 8;
-                const SHRAPNEL_SPEED = 3;
-                const SHRAPNEL_SIZE = 3;
+                const SHRAPNEL_COUNT = 8; // 8 dots in all directions
+                const SHRAPNEL_SPEED = 4; // Faster speed
+                const SHRAPNEL_SIZE = 8; // Larger, more visible dots
+                const SHRAPNEL_MAX_DISTANCE = 200; // Distance to travel before disappearing
                 
                 // Create shrapnel in all directions
                 for(let i=0; i<SHRAPNEL_COUNT; i++) {
@@ -902,8 +919,11 @@
                         height: SHRAPNEL_SIZE,
                         vx: vx,
                         vy: vy,
-                        color: '#FF3300', // Bright orange-red for visibility
-                        life: 60 // Limited lifetime to prevent screen cluttering
+                        color: '#FF0000', // Bright red for better visibility
+                        life: 500, // Longer lifetime 
+                        initialX: worldX, // Store initial position to track distance
+                        initialY: y,
+                        maxDistance: SHRAPNEL_MAX_DISTANCE // Max distance to travel
                     });
                 }
             }
@@ -1175,15 +1195,31 @@
             
             // Draw MUCH BIGGER, more visible arms (same color as body)
             
-            if (e.isFalling || e.isAbducted) {
-                // Left arm with animation - MUCH bigger
+            if (e.isFalling) {
+                // When falling, arms wave UPWARD (different animation than when abducted)
+                // Left arm waving upward - MUCH bigger
+                eCtx.save();
+                eCtx.translate(cX+e.width*.3, cY+e.height*.45);
+                eCtx.rotate(-Math.PI/2 - e.armAngle); // Point more upward with inverse animation
+                eCtx.fillRect(-e.width*.05, 0, e.width*.35, e.height*.5); // Much bigger
+                eCtx.restore();
+                
+                // Right arm waving upward - MUCH bigger
+                eCtx.save();
+                eCtx.translate(cX+e.width*.7, cY+e.height*.45);
+                eCtx.rotate(Math.PI/2 + e.armAngle); // Point more upward with inverse animation
+                eCtx.fillRect(-e.width*.15, 0, e.width*.35, e.height*.5); // Much bigger
+                eCtx.restore();
+            } else if (e.isAbducted) {
+                // When abducted, arms wave DOWNWARD (original animation)
+                // Left arm waving downward - MUCH bigger
                 eCtx.save();
                 eCtx.translate(cX+e.width*.3, cY+e.height*.45);
                 eCtx.rotate(-Math.PI/4 + e.armAngle);
                 eCtx.fillRect(-e.width*.05, 0, e.width*.35, e.height*.5); // Much bigger
                 eCtx.restore();
                 
-                // Right arm with animation - MUCH bigger
+                // Right arm waving downward - MUCH bigger
                 eCtx.save();
                 eCtx.translate(cX+e.width*.7, cY+e.height*.45);
                 eCtx.rotate(Math.PI/4 - e.armAngle);
@@ -1308,7 +1344,30 @@
             eCtx.restore();
             break;
             
-        case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
+        case'enemy_projectile':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.arc(cX+e.width/2,cY+e.height/2,e.width/2,0,Math.PI*2);eCtx.fill();break;
+        case'shrapnel':
+            // Draw a glowing shrapnel dot with a bright outer glow
+            // Outer glow (larger, semi-transparent)
+            eCtx.save();
+            eCtx.fillStyle = 'rgba(255, 140, 0, 0.6)';
+            eCtx.beginPath();
+            eCtx.arc(cX+e.width/2, cY+e.height/2, e.width, 0, Math.PI*2);
+            eCtx.fill();
+            
+            // Middle glow (orange-yellow)
+            eCtx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+            eCtx.beginPath();
+            eCtx.arc(cX+e.width/2, cY+e.height/2, e.width * 0.7, 0, Math.PI*2);
+            eCtx.fill();
+            
+            // Center (solid, bright)
+            eCtx.fillStyle = e.color; // Bright red core
+            eCtx.beginPath();
+            eCtx.arc(cX+e.width/2, cY+e.height/2, e.width * 0.4, 0, Math.PI*2);
+            eCtx.fill();
+            eCtx.restore();
+            break;
+        case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
         function drawRadar(){ /* Minified */ radarDiv.innerHTML='';if(!player.worldX&&player.worldX!==0)return;const rS=radarDiv.offsetWidth/PLANET_WIDTH;const rH=radarDiv.offsetHeight;let pRX=player.worldX*rS;let pD=document.createElement('div');pD.className='radar-dot player-dot';pD.style.left=`${pRX}px`;pD.style.top=`${rH/2}px`;radarDiv.appendChild(pD);humanoids.forEach(h=>{if(!h.isAbducted){let hRX=h.worldX*rS;let hD=document.createElement('div');hD.className='radar-dot human-dot';hD.style.left=`${hRX}px`;hD.style.top=`${rH-4}px`;radarDiv.appendChild(hD)}});enemies.forEach(e=>{let eRX=e.worldX*rS;let rTop=e.y/CANVAS_HEIGHT*rH;rTop=clamp(rTop,2,rH-2);let eD=document.createElement('div');eD.className=`radar-dot ${e.type==='Mutant'?'mutant-dot':'enemy-dot'}`;eD.style.left=`${eRX}px`;eD.style.top=`${rTop}px`;radarDiv.appendChild(eD)})}
         function updateUI(){ /* Minified */ scoreUI.textContent=score;livesUI.textContent=lives;bombsUI.textContent=smartBombs;waveUI.textContent=currentWave;if(player.shieldEnergy!==undefined){shieldFillUI.style.width=`${player.shieldEnergy/PLAYER_MAX_SHIELD_ENERGY*100}%`}}
         // Track game time and frame timing
