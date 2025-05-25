@@ -120,19 +120,19 @@
         #action-button-container { margin-top: 15px; }
         #action-button {
             background: linear-gradient(145deg, #005050, #003030);
-            color: #FFFF00; border: 2px solid #FFFF00; border-radius: 8px;
+            color: #00FFFF; border: 2px solid #00FFFF; border-radius: 8px;
             padding: 12px 25px; font-size: clamp(18px, 4vw, 24px); font-weight: bold;
             cursor: pointer; text-shadow: 0 0 5px #000000;
-            box-shadow: 0 0 8px #FFFF00, 0 0 15px #FFFF00 inset;
+            box-shadow: 0 0 8px #00FFFF, 0 0 15px #00FFFF inset;
             transition: background 0.3s ease, box-shadow 0.3s ease;
             display: flex; flex-direction: column; align-items: center;
         }
         #action-button:hover {
             background: linear-gradient(145deg, #007070, #005050);
-            box-shadow: 0 0 12px #FFFF00, 0 0 20px #FFFF00 inset, 0 0 5px #FFFFFF;
+            box-shadow: 0 0 12px #00FFFF, 0 0 20px #00FFFF inset, 0 0 5px #FFFFFF;
         }
         #action-button-main-text { display: block; }
-        #action-button-subtext { display: block; font-size: clamp(10px, 2vw, 12px); font-weight: normal; color: rgba(255, 255, 0, 0.5); margin-top: 4px; }
+        #action-button-subtext { display: block; font-size: clamp(10px, 2vw, 12px); font-weight: normal; color: rgba(0, 255, 255, 0.5); margin-top: 4px; }
 
         /* Enemy Key Styles */
         #enemy-key {
@@ -221,15 +221,15 @@
                     </div>
                     <div class="enemy-key-item">
                         <canvas id="mutant-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
-                        <div class="enemy-label">Fighter</div>
+                        <div class="enemy-label">Saucer</div>
                     </div>
                     <div class="enemy-key-item">
                         <canvas id="bomber-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
                         <div class="enemy-label">Bomber</div>
                     </div>
                     <div class="enemy-key-item">
-                        <canvas id="destroyer-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
-                        <div class="enemy-label">Destroyer</div>
+                        <canvas id="pulsar-preview" class="enemy-preview-canvas" width="60" height="40"></canvas>
+                        <div class="enemy-label">Pulsar</div>
                     </div>
                 </div>
             </div>
@@ -276,14 +276,18 @@
         const MUTANT_WIDTH = 34; const MUTANT_HEIGHT = 26; const MUTANT_SPEED = 1.8; // Faster Mutants
         const MUTANT_FIRE_RATE = 1500; const MUTANT_POINTS = 300;
         
-        // Destroyer enemy (appears in level 3+)
-        const DESTROYER_WIDTH = 40; const DESTROYER_HEIGHT = 25;
-        const DESTROYER_SPEED = 1.4; // Increased speed while maintaining powerful lasers
-        const DESTROYER_FIRE_RATE = 2000; // Fires less frequently
-        const DESTROYER_POINTS = 350; // Worth more points
-        const DESTROYER_LASER_WIDTH = 30; // Long laser beams
-        const DESTROYER_LASER_HEIGHT = 2; // Half as tall as before
-        const DESTROYER_LASER_SPEED = 9; // Even faster laser beams
+        // Pulsar enemy (appears in level 3+)
+        const PULSAR_WIDTH = 60; const PULSAR_HEIGHT = 25;
+        const PULSAR_SPEED = 1.4; // Increased speed while maintaining powerful weapons
+        const PULSAR_FIRE_RATE = 2000; // Fires less frequently
+        const PULSAR_POINTS = 350; // Worth more points
+        
+        // Concentric circle attack constants
+        const PULSAR_CIRCLE_COUNT = 5; // 5 concentric circles
+        const PULSAR_CIRCLE_MIN_RADIUS = 10; // Starting radius
+        const PULSAR_CIRCLE_MAX_RADIUS = 60; // Max radius before disappearing
+        const PULSAR_CIRCLE_GROWTH_RATE = 1.5; // How fast circles expand
+        const PULSAR_CIRCLE_SPEED = 6; // How fast circles move horizontally
         const BOMBER_WIDTH = 50; const BOMBER_HEIGHT = 14; const BOMBER_SPEED = 1.0; // Faster Bombers
         const BOMBER_FIRE_RATE = 2000; const BOMBER_POINTS = 200;
         const BOMBER_BOMB_SPEED = 2.2; const BOMBER_BOMB_WIDTH = 12; const BOMBER_BOMB_HEIGHT = 12; // Faster bombs
@@ -313,7 +317,7 @@
 
         // --- Audio ---
         let audioInitialized = false;
-        let synthPlayerShoot, synthEnemyShoot, synthExplosionNoise, synthExplosionRumbleEnv, synthExplosionClick, synthPlayerHit, synthShieldOn, synthShieldOff, synthHyperspaceEnter, synthHyperspaceExit, synthRescue, synthAbduct, synthWaveClear, synthGameOver, synthGameStart, synthShieldHit;
+        let synthPlayerShoot, synthEnemyShoot, synthExplosionNoise, synthExplosionRumbleEnv, synthExplosionClick, synthPlayerHit, synthShieldOn, synthShieldOff, synthHyperspaceEnter, synthHyperspaceExit, synthRescue, synthAbduct, synthWaveClear, synthGameOver, synthGameStart, synthShieldHit, synthSaucerBullet;
 
         function initializeAudio() {
             if (audioInitialized) return Promise.resolve();
@@ -341,7 +345,52 @@
                     synthExplosionClick = new Tone.NoiseSynth({ noise: { type: 'white'}, envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.02}, volume: -18 }).toDestination();
 
 
-                    synthPlayerHit=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.005,decay:.1,sustain:0,release:.1}}).connect(new Tone.PitchShift({pitch:-12}).toDestination());synthPlayerHit.volume.value=-8;synthShieldOn=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.1,decay:.01,sustain:.1,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.1,decay:.01,sustain:1,release:.1}}).toDestination();synthShieldOn.volume.value=-12;synthShieldOff=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.01,decay:.1,sustain:.01,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.01,decay:.1,sustain:1,release:.1}}).toDestination();synthShieldOff.volume.value=-12;synthHyperspaceEnter=new Tone.MonoSynth({oscillator:{type:"sawtooth"},filter:{Q:2,type:"lowpass",rolloff:-24},envelope:{attack:.1,decay:.1,sustain:.3,release:.5},filterEnvelope:{attack:.05,decay:.1,sustain:.1,release:.5,baseFrequency:200,octaves:3}}).toDestination();synthHyperspaceEnter.volume.value=-10;synthHyperspaceExit=new Tone.MonoSynth({oscillator:{type:"square"},filter:{Q:1,type:"bandpass",rolloff:-12},envelope:{attack:.01,decay:.2,sustain:0,release:.1},filterEnvelope:{attack:.01,decay:.1,sustain:0,release:.1,baseFrequency:500,octaves:2}}).toDestination();synthHyperspaceExit.volume.value=-10;synthRescue=new Tone.MetalSynth({frequency:400,envelope:{attack:.001,decay:.2,release:.1},harmonicity:3.1,modulationIndex:16,resonance:4e3,octaves:1.5}).toDestination();synthRescue.volume.value=-8;synthAbduct=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.3,sustain:.1,release:.2}}).toDestination();synthAbduct.volume.value=-15;synthWaveClear=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'pulse',width:.2},envelope:{attack:.01,decay:.1,sustain:.2,release:.2}}).toDestination();synthWaveClear.volume.value=-10;synthGameOver=new Tone.MonoSynth({oscillator:{type:"fatsawtooth",count:3,spread:30},envelope:{attack:.1,decay:.5,sustain:.1,release:1}}).toDestination();synthGameOver.volume.value=-5;synthGameStart=new Tone.PolySynth(Tone.Synth,{oscillator:{type:"triangle8"},envelope:{attack:.02,decay:.2,sustain:.3,release:.4},volume:-8}).toDestination();synthShieldHit=new Tone.MembraneSynth({pitchDecay:.008,octaves:2,envelope:{attack:.001,decay:.2,sustain:0,release:.1}}).toDestination();synthShieldHit.volume.value=-15;
+                    synthPlayerHit=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:.005,decay:.1,sustain:0,release:.1}}).connect(new Tone.PitchShift({pitch:-12}).toDestination());synthPlayerHit.volume.value=-8;synthShieldOn=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.1,decay:.01,sustain:.1,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.1,decay:.01,sustain:1,release:.1}}).toDestination();synthShieldOn.volume.value=-12;synthShieldOff=new Tone.AMSynth({harmonicity:1.1,oscillator:{type:"sine"},envelope:{attack:.01,decay:.1,sustain:.01,release:.1},modulation:{type:"sine"},modulationEnvelope:{attack:.01,decay:.1,sustain:1,release:.1}}).toDestination();synthShieldOff.volume.value=-12;synthHyperspaceEnter=new Tone.MonoSynth({oscillator:{type:"sawtooth"},filter:{Q:2,type:"lowpass",rolloff:-24},envelope:{attack:.1,decay:.1,sustain:.3,release:.5},filterEnvelope:{attack:.05,decay:.1,sustain:.1,release:.5,baseFrequency:200,octaves:3}}).toDestination();synthHyperspaceEnter.volume.value=-10;synthHyperspaceExit=new Tone.MonoSynth({oscillator:{type:"square"},filter:{Q:1,type:"bandpass",rolloff:-12},envelope:{attack:.01,decay:.2,sustain:0,release:.1},filterEnvelope:{attack:.01,decay:.1,sustain:0,release:.1,baseFrequency:500,octaves:2}}).toDestination();synthHyperspaceExit.volume.value=-10;synthRescue=new Tone.MetalSynth({frequency:400,envelope:{attack:.001,decay:.2,release:.1},harmonicity:3.1,modulationIndex:16,resonance:4e3,octaves:1.5}).toDestination();synthRescue.volume.value=-8;
+                    
+                    // Abduction sound when lander captures human
+                    synthAbduct=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.3,sustain:.1,release:.2}}).toDestination();synthAbduct.volume.value=-15;
+                    
+                    // Saucer bullet sound - using the original human chirp sound but quieter
+                    synthSaucerBullet = new Tone.MonoSynth({
+                        oscillator: {
+                            type: 'sine'
+                        },
+                        envelope: {
+                            attack: 0.01,
+                            decay: 0.3,
+                            sustain: 0.4,
+                            release: 0.5
+                        },
+                        filterEnvelope: {
+                            attack: 0.01,
+                            decay: 0.7,
+                            sustain: 0.1,
+                            release: 0.8,
+                            baseFrequency: 300,
+                            octaves: 4
+                        }
+                    }).toDestination();
+                    synthSaucerBullet.volume.value = -20; // Quieter than the original human chirp
+                    
+                    // New 2-tone sound for human capture - higher first pitch
+                    synthHumanChirp = new Tone.PolySynth(Tone.Synth, {
+                        polyphony: 2,
+                        voice: Tone.Synth,
+                        options: {
+                            oscillator: {
+                                type: 'sine'
+                            },
+                            envelope: {
+                                attack: 0.01,
+                                decay: 0.2,
+                                sustain: 0.2,
+                                release: 0.4
+                            }
+                        }
+                    }).toDestination();
+                    synthHumanChirp.volume.value = -8;
+                    
+                    synthWaveClear=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'pulse',width:.2},envelope:{attack:.01,decay:.1,sustain:.2,release:.2}}).toDestination();synthWaveClear.volume.value=-10;synthGameOver=new Tone.MonoSynth({oscillator:{type:"fatsawtooth",count:3,spread:30},envelope:{attack:.1,decay:.5,sustain:.1,release:1}}).toDestination();synthGameOver.volume.value=-5;synthGameStart=new Tone.PolySynth(Tone.Synth,{oscillator:{type:"triangle8"},envelope:{attack:.02,decay:.2,sustain:.3,release:.4},volume:-8}).toDestination();synthShieldHit=new Tone.MembraneSynth({pitchDecay:.008,octaves:2,envelope:{attack:.001,decay:.2,sustain:0,release:.1}}).toDestination();synthShieldHit.volume.value=-15;
 
                     audioInitialized = true;
                     console.log("Audio Initialized after Tone.start(). Transport started.");
@@ -503,16 +552,16 @@
                 } 
             }
             
-            // Spawn Destroyers starting from wave 3
+            // Spawn Pulsars starting from wave 3
             if(currentWave >= 3) {
-                const destroyerCount = Math.min(1 + Math.floor((currentWave - 3) / 2), 3); 
-                for(let i=0; i<destroyerCount; i++){
+                const pulsarCount = Math.min(1 + Math.floor((currentWave - 3) / 2), 3); 
+                for(let i=0; i<pulsarCount; i++){
                     enemies.push({
-                        type: 'Destroyer',
+                        type: 'Pulsar',
                         worldX: random(0, PLANET_WIDTH),
                         y: random(40, CANVAS_HEIGHT/4), // Higher up in the sky
-                        width: DESTROYER_WIDTH,
-                        height: DESTROYER_HEIGHT,
+                        width: PULSAR_WIDTH,
+                        height: PULSAR_HEIGHT,
                         vx: 0,
                         vy: 0,
                         color: '#0088FF', // Blue-ish color
@@ -534,7 +583,7 @@
                 if(distTravelled > PLANET_WIDTH/2) {
                     distTravelled = PLANET_WIDTH - distTravelled;
                 }
-                if(distTravelled > CANVAS_WIDTH + 50) {
+                if(distTravelled > CANVAS_WIDTH) {
                     projectiles.player.splice(i, 1);
                 }
             });
@@ -588,6 +637,24 @@
                     }
                 }
                 
+                // Handle circle attack projectiles
+                if(p.type === 'circle_attack') {
+                    // Grow the circle over time
+                    if (p.radius !== undefined && p.growthRate !== undefined) {
+                        p.radius += p.growthRate * (dt / 16); // Scale growth with frame time
+                        
+                        // Update collision width/height based on radius
+                        p.width = p.radius * 2;
+                        p.height = p.radius * 2;
+                        
+                        // Remove if circle has grown to max size
+                        if (p.maxRadius !== undefined && p.radius >= p.maxRadius) {
+                            projectiles.enemy.splice(i, 1);
+                            return;
+                        }
+                    }
+                }
+                
                 // Remove projectiles that go off-screen
                 const cX = worldToCanvasX(p.worldX);
                 if(cX < -p.width || cX > CANVAS_WIDTH + p.width || 
@@ -603,16 +670,101 @@
                 if(e.type==='Lander') updateLander(e,dt);
                 if(e.type==='Mutant') updateMutant(e,dt);
                 if(e.type==='Bomber') updateBomber(e,dt);
-                if(e.type==='Destroyer') updateDestroyer(e,dt);
+                if(e.type==='Pulsar') updatePulsar(e,dt);
                 
                 // Apply movement
                 e.worldX=(e.worldX+e.vx+PLANET_WIDTH)%PLANET_WIDTH;
                 e.y+=e.vy;
             } 
         }
-        function updateLander(l, dt) { /* Minified v2.32 */ const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER; l.stateTimer-=dt;switch(l.state){case'patrolling':l.vx=Math.sin(Date.now()*.001+l.worldX*.1)*LANDER_SPEED*.5*waveSpeedMultiplier;l.vy=Math.cos(Date.now()*.0008+l.worldX*.08)*LANDER_SPEED*.3*waveSpeedMultiplier;l.y=clamp(l.y,50,GROUND_LEVEL-l.height-HUMANOID_HEIGHT-20);if(l.stateTimer<=0){l.state='seeking';l.stateTimer=random(2e3,5e3)}break;case'seeking':if(!l.targetHuman||l.targetHuman.isAbducted||!l.targetHuman.isSafe)l.targetHuman=findClosestHuman(l);if(l.targetHuman){let dx=l.targetHuman.worldX-l.worldX;if(Math.abs(dx)>PLANET_WIDTH/2)dx=dx>0?dx-PLANET_WIDTH:dx+PLANET_WIDTH;const ang=Math.atan2(l.targetHuman.y-l.height-l.y,dx);l.vx=Math.cos(ang)*LANDER_SPEED*waveSpeedMultiplier;l.vy=Math.sin(ang)*LANDER_SPEED*waveSpeedMultiplier;if(getDistance(l.worldX,l.y,l.targetHuman.worldX,l.targetHuman.y-l.height)<l.height*1.5){l.state='abducting';l.isCarryingHuman=true;l.targetHuman.isAbducted=true;l.targetHuman.abductor=l;l.targetHuman.isSafe=false;if(audioInitialized&&synthAbduct)synthAbduct.triggerAttackRelease("8n",Tone.now()+.01);}}else{l.state='patrolling';l.stateTimer=random(3e3,6e3)}if(l.stateTimer<=0&&l.state==='seeking'){l.state='patrolling';l.stateTimer=random(3e3,6e3)}break;case'abducting':l.vx=0;l.vy=-LANDER_SPEED*.8*waveSpeedMultiplier;if(l.targetHuman){l.targetHuman.worldX=l.worldX;l.targetHuman.y=l.y+l.height/2}if(l.y<-l.height){if(l.targetHuman){transformToMutant(l.targetHuman,l.worldX,10);let idx=humanoids.indexOf(l.targetHuman);if(idx!==-1)humanoids.splice(idx,1)}enemies.splice(enemies.indexOf(l),1)}break;}}
+        function updateLander(l, dt) { /* Minified v2.32 */ 
+            const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER; 
+            l.stateTimer -= dt;
+            
+            switch(l.state) {
+                case 'patrolling':
+                    l.vx = Math.sin(Date.now() * 0.001 + l.worldX * 0.1) * LANDER_SPEED * 0.5 * waveSpeedMultiplier;
+                    l.vy = Math.cos(Date.now() * 0.0008 + l.worldX * 0.08) * LANDER_SPEED * 0.3 * waveSpeedMultiplier;
+                    l.y = clamp(l.y, 50, GROUND_LEVEL - l.height - HUMANOID_HEIGHT - 20);
+                    if (l.stateTimer <= 0) {
+                        l.state = 'seeking';
+                        l.stateTimer = random(2000, 5000);
+                    }
+                    break;
+                    
+                case 'seeking':
+                    if (!l.targetHuman || l.targetHuman.isAbducted || !l.targetHuman.isSafe) {
+                        l.targetHuman = findClosestHuman(l);
+                    }
+                    
+                    if (l.targetHuman) {
+                        let dx = l.targetHuman.worldX - l.worldX;
+                        if (Math.abs(dx) > PLANET_WIDTH/2) {
+                            dx = dx > 0 ? dx - PLANET_WIDTH : dx + PLANET_WIDTH;
+                        }
+                        const ang = Math.atan2(l.targetHuman.y - l.height - l.y, dx);
+                        l.vx = Math.cos(ang) * LANDER_SPEED * waveSpeedMultiplier;
+                        l.vy = Math.sin(ang) * LANDER_SPEED * waveSpeedMultiplier;
+                        
+                        if (getDistance(l.worldX, l.y, l.targetHuman.worldX, l.targetHuman.y - l.height) < l.height * 1.5) {
+                            l.state = 'abducting';
+                            l.isCarryingHuman = true;
+                            l.targetHuman.isAbducted = true;
+                            l.targetHuman.abductor = l;
+                            l.targetHuman.isSafe = false;
+                            
+                            if (audioInitialized) {
+                                if (synthAbduct) synthAbduct.triggerAttackRelease("8n", Tone.now() + 0.01);
+                                if (synthHumanChirp) {
+                                    // Use Tone.Transport scheduling to ensure proper timing
+                                    // This prevents the 'Start time must be strictly greater' error
+                                    Tone.Transport.scheduleOnce((time) => {
+                                        // First tone - lower than before
+                                        synthHumanChirp.triggerAttackRelease("C6", "16n", time);
+                                    }, Tone.now());
+                                    
+                                    Tone.Transport.scheduleOnce((time) => {
+                                        // Second tone - higher than before, closer to first tone
+                                        synthHumanChirp.triggerAttackRelease("G5", "8n", time);
+                                    }, Tone.now() + 0.2);
+                                }
+                            } // Play both abductor and human sounds
+                        }
+                    } else {
+                        l.state = 'patrolling';
+                        l.stateTimer = random(3000, 6000);
+                    }
+                    
+                    if (l.stateTimer <= 0 && l.state === 'seeking') {
+                        l.state = 'patrolling';
+                        l.stateTimer = random(3000, 6000);
+                    }
+                    
+                    // Abductors don't fire - removed firing capability
+                    break;
+                    
+                case 'abducting':
+                    l.vx = 0;
+                    l.vy = -LANDER_SPEED * 0.8 * waveSpeedMultiplier;
+                    
+                    if (l.targetHuman) {
+                        l.targetHuman.worldX = l.worldX;
+                        l.targetHuman.y = l.y + l.height/2;
+                    }
+                    
+                    if (l.y < -l.height) {
+                        if (l.targetHuman) {
+                            transformToMutant(l.targetHuman, l.worldX, 10);
+                            let idx = humanoids.indexOf(l.targetHuman);
+                            if (idx !== -1) humanoids.splice(idx, 1);
+                        }
+                        enemies.splice(enemies.indexOf(l), 1);
+                    }
+                    break;
+            }
+        }
         function updateMutant(m, dt) { /* Minified v2.26 */ const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER; const waveFireRate = MUTANT_FIRE_RATE * (1 - (currentWave - 1) * WAVE_FIRE_RATE_IMPROVEMENT); const pCX=worldToCanvasX(player.worldX);const mCX=worldToCanvasX(m.worldX);let dxToPlayer=player.worldX-m.worldX;if(Math.abs(dxToPlayer)>PLANET_WIDTH/2){dxToPlayer=dxToPlayer>0?dxToPlayer-PLANET_WIDTH:dxToPlayer+PLANET_WIDTH}const dyToPlayer=player.y-m.y;const ang=Math.atan2(dyToPlayer,dxToPlayer);m.vx=Math.cos(ang)*MUTANT_SPEED*waveSpeedMultiplier;m.vy=Math.sin(ang)*MUTANT_SPEED*waveSpeedMultiplier;if(Date.now()-(m.lastShotTime||0)>waveFireRate){projectiles.enemy.push({type:'enemy_projectile',worldX:m.worldX+m.width/2,y:m.y+m.height/2,vx:Math.cos(ang)*ENEMY_PROJECTILE_SPEED,vy:Math.sin(ang)*ENEMY_PROJECTILE_SPEED,width:ENEMY_PROJECTILE_WIDTH,height:ENEMY_PROJECTILE_HEIGHT,color:'#FF8800'});m.lastShotTime=Date.now();if(audioInitialized&&synthEnemyShoot)synthEnemyShoot.triggerAttackRelease("A3","8n")}}
-        function updateDestroyer(d, dt) {
+        function updatePulsar(d, dt) {
             // Ensure initialization of state if not already done
             if (!d.state) {
                 d.state = 'patrolling';
@@ -622,7 +774,7 @@
             
             // Apply wave-based difficulty scaling
             const waveSpeedMultiplier = 1 + (currentWave - 1) * WAVE_SPEED_MULTIPLIER;
-            const waveFireRate = DESTROYER_FIRE_RATE * (1 - (currentWave - 1) * WAVE_FIRE_RATE_IMPROVEMENT);
+            const waveFireRate = PULSAR_FIRE_RATE * (1 - (currentWave - 1) * WAVE_FIRE_RATE_IMPROVEMENT);
             
             // Decrease state timer
             d.stateTimer -= dt;
@@ -632,8 +784,8 @@
                 case 'patrolling':
                     // Primarily vertical motion (hornet bobbing) with minimal horizontal movement
                     // Use a smaller coefficient for horizontal movement and larger for vertical
-                    d.vx = Math.cos(Date.now() * 0.0005 + d.worldX * 0.03) * DESTROYER_SPEED * 0.3 * waveSpeedMultiplier;
-                    d.vy = Math.sin(Date.now() * 0.003 + d.worldX * 0.05) * DESTROYER_SPEED * 1.2 * waveSpeedMultiplier;
+                    d.vx = Math.cos(Date.now() * 0.0005 + d.worldX * 0.03) * PULSAR_SPEED * 0.3 * waveSpeedMultiplier;
+                    d.vy = Math.sin(Date.now() * 0.003 + d.worldX * 0.05) * PULSAR_SPEED * 1.2 * waveSpeedMultiplier;
                     
                     // Keep within reasonable height bounds
                     d.y = clamp(d.y, 30, CANVAS_HEIGHT / 2);
@@ -661,11 +813,11 @@
                     
                     // Move towards player's position but with more vertical variance (hornet-like)
                     const angleToPlayer = Math.atan2(dyToPlayer, dxToPlayer);
-                    d.vx = Math.cos(angleToPlayer) * DESTROYER_SPEED * 0.4 * waveSpeedMultiplier;
-                    d.vy = Math.sin(angleToPlayer) * DESTROYER_SPEED * 0.7 * waveSpeedMultiplier;
+                    d.vx = Math.cos(angleToPlayer) * PULSAR_SPEED * 0.4 * waveSpeedMultiplier;
+                    d.vy = Math.sin(angleToPlayer) * PULSAR_SPEED * 0.7 * waveSpeedMultiplier;
                     
                     // Add pronounced vertical bobbing movement to make it more hornet-like
-                    d.vy += Math.sin(Date.now() * 0.006) * DESTROYER_SPEED * 0.6 * waveSpeedMultiplier;
+                    d.vy += Math.sin(Date.now() * 0.006) * PULSAR_SPEED * 0.6 * waveSpeedMultiplier;
                     
                     // Fire laser beam when cooldown complete
                     if (Date.now() - (d.lastShotTime || 0) > waveFireRate) {
@@ -681,40 +833,49 @@
             }
         }
         
-        // Helper function to fire laser from Destroyer
+        // Helper function to fire laser from Pulsar
         function fireLaser(d) {
-            // Center position for both lasers
-            const laserX = d.worldX + d.width / 2 - DESTROYER_LASER_WIDTH / 2;
+            // Center position of the Pulsar for circle origin
+            const centerX = d.worldX + d.width / 2;
+            const centerY = d.y + d.height / 2;
             
-            // Create downward laser beam
-            projectiles.enemy.push({
-                type: 'laser',
-                worldX: laserX,
-                y: d.y + d.height,  // Position at bottom of ship
-                vx: 0,  // Laser goes straight down
-                vy: DESTROYER_LASER_SPEED,  // Positive velocity for downward movement
-                width: DESTROYER_LASER_WIDTH,
-                height: DESTROYER_LASER_HEIGHT,
-                color: '#FF0000' // Red laser beam
-            });
+            // Fire circles in both left and right directions
+            fireCircleAttack(centerX, centerY, -1); // Left direction
+            fireCircleAttack(centerX, centerY, 1);  // Right direction
             
-            // Create upward laser beam
-            projectiles.enemy.push({
-                type: 'laser',
-                worldX: laserX,
-                y: d.y - DESTROYER_LASER_HEIGHT,  // Position at top of ship
-                vx: 0,  // Laser goes straight up
-                vy: -DESTROYER_LASER_SPEED,  // Negative velocity for upward movement
-                width: DESTROYER_LASER_WIDTH,
-                height: DESTROYER_LASER_HEIGHT,
-                color: '#FF0000' // Red laser beam
-            });
-            
+            // Update shot time
             d.lastShotTime = Date.now();
             
-            // Play laser sound
+            // Play laser sound - lower pitch for pulsar weapon
             if (audioInitialized && synthEnemyShoot) {
-                synthEnemyShoot.triggerAttackRelease("E4", "16n");
+                // Use a lower pitch (C3 instead of E4)
+                synthEnemyShoot.triggerAttackRelease("C3", "16n");
+            }
+        }
+        
+        function fireCircleAttack(originX, originY, direction) {
+            // Create 5 concentric circle projectiles
+            for (let i = 0; i < PULSAR_CIRCLE_COUNT; i++) {
+                // Stagger the initial radii so they don't all start at the same size
+                const initialRadius = PULSAR_CIRCLE_MIN_RADIUS + (i * 2);
+                
+                projectiles.enemy.push({
+                    type: 'circle_attack',
+                    worldX: originX, // Center X position
+                    y: originY,      // Center Y position
+                    vx: PULSAR_CIRCLE_SPEED * direction, // Move left or right
+                    vy: 0,           // No vertical movement
+                    radius: initialRadius, // Current radius - will grow
+                    initialRadius: initialRadius,
+                    maxRadius: PULSAR_CIRCLE_MAX_RADIUS,
+                    growthRate: PULSAR_CIRCLE_GROWTH_RATE,
+                    width: initialRadius * 2, // Width/height used for collision detection
+                    height: initialRadius * 2,
+                    color: '#FF6600', // Orange-red color for border only
+                    alpha: 1.0 - (i * 0.15), // Decreasing opacity for each ring
+                    ringIndex: i, // Store which ring this is (0 = innermost, 4 = outermost)
+                    borderOnly: true // Flag to indicate this should be drawn as border only
+                });
             }
         }
         
@@ -868,14 +1029,14 @@
                 },Tone.now()+.011);
             }
             
-            // Flash effect
+            // Flash effect - simplified to a single color
             particles.push({
                 type: 'explosion_flash',
                 worldX: worldX,
                 y: y,
                 radius: 0,
                 maxRadius: flashRadius,
-                color: 'rgba(255,255,200,0.9)',
+                color: baseColor, // Use the base color for consistency
                 life: flashDuration,
                 initialLife: flashDuration,
                 alpha: 0.9
@@ -929,7 +1090,61 @@
             }
         }
 
-        function collisionDetection(){ /* Minified v2.17 */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;const pCX=worldToCanvasX(player.worldX);const pRect={x:pCX,y:player.y,width:player.width,height:player.height};const shieldRadius=player.width*SHIELD_RADIUS_MULTIPLIER;const shieldCircle={x:pCX+player.width/2,y:player.y+player.height/2,radius:shieldRadius};for(let i=projectiles.player.length-1;i>=0;i--){let p=projectiles.player[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(rectIntersect(pR,eR)){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=(e.type==='Lander'?LANDER_POINTS:(e.type==='Bomber'?BOMBER_POINTS:MUTANT_POINTS));projectiles.player.splice(i,1);if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(j,1);break}}}for(let i=projectiles.enemy.length-1;i>=0;i--){let p=projectiles.enemy[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,pR)){createParticleEffect(p.worldX,p.y,'#00FFFF',5,2,false,100,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("C5","16n");projectiles.enemy.splice(i,1)}else if(!player.isInvulnerable&&rectIntersect(pR,pRect)){projectiles.enemy.splice(i,1);playerHit();break}}for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,eR)){if(e.type==='Lander'||e.type==='Bomber'){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=SHIELD_MINOR_ENEMY_DESTROY_SCORE;if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(i,1);if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("A4","16n")}else{createParticleEffect(e.worldX,e.y,'#00FFFF',8,3,false,150,'shield_hit');if(audioInitialized&&synthShieldHit)synthShieldHit.triggerAttackRelease("E4","16n")}}else if(!player.isInvulnerable&&rectIntersect(pRect,eR)){if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}playerHit();enemies.splice(i,1);break}}for(let i=humanoids.length-1;i>=0;i--){let h=humanoids[i];if(!h)continue;if(h.isFalling){const hR={x:worldToCanvasX(h.worldX),y:h.y,width:h.width,height:h.height};if(rectIntersect(pRect,hR)){h.isFalling=false;h.y=GROUND_LEVEL-h.height;h.isSafe=true;score+=HUMANOID_RESCUE_POINTS;if(audioInitialized&&synthRescue)synthRescue.triggerAttackRelease("A5","8n");createParticleEffect(player.worldX,player.y,'#00FF00',10,3,false,200,'rescue_flash')}}}}
+        function collisionDetection(){ /* Minified v2.17 */ if(!gameRunning||gameOverState||player.hyperspaceActive)return;const pCX=worldToCanvasX(player.worldX);const pRect={x:pCX,y:player.y,width:player.width,height:player.height};const shieldRadius=player.width*SHIELD_RADIUS_MULTIPLIER;const shieldCircle={x:pCX+player.width/2,y:player.y+player.height/2,radius:shieldRadius};for(let i=projectiles.player.length-1;i>=0;i--){let p=projectiles.player[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(rectIntersect(pR,eR)){createExplosion(e.worldX,e.y+e.height/2,e.color);score+=(e.type==='Lander'?LANDER_POINTS:(e.type==='Bomber'?BOMBER_POINTS:MUTANT_POINTS));projectiles.player.splice(i,1);if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(j,1);break}}}for(let i=projectiles.enemy.length-1;i>=0;i--){let p=projectiles.enemy[i];if(!p)continue;const pR={x:worldToCanvasX(p.worldX),y:p.y,width:p.width,height:p.height};// Special case for circle attacks - ensure proper hit detection
+if(p.type === 'circle_attack') {
+    // Make sure width and height are updated with current radius
+    p.width = p.radius * 2;
+    p.height = p.radius * 2;
+    // Update the collision rectangle
+    pR.width = p.width;
+    pR.height = p.height;
+    // Center the rectangle on the circle's center
+    pR.x = worldToCanvasX(p.worldX) - p.radius;
+    pR.y = p.y - p.radius;
+}
+if(player.isShieldActive && circleRectIntersect(shieldCircle,pR)) {
+                    createParticleEffect(p.worldX, p.y, '#00FFFF', 5, 2, false, 100, 'shield_hit');
+                    
+                    // Add a small time offset to prevent Tone.js timing errors
+                    if(audioInitialized && synthShieldHit) {
+                        // Create a small offset based on the projectile index to avoid simultaneous sound triggers
+                        const timeOffset = Tone.now() + (i * 0.01);
+                        synthShieldHit.triggerAttackRelease("C5", "16n", timeOffset);
+                    }
+                    
+                    projectiles.enemy.splice(i, 1);
+                }else if(!player.isInvulnerable&&rectIntersect(pR,pRect)){
+                    // Hit by enemy projectile
+                    projectiles.enemy.splice(i,1);
+                    playerHit();
+                    break;
+                }
+            }for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(!e)continue;const eR={x:worldToCanvasX(e.worldX),y:e.y,width:e.width,height:e.height};if(player.isShieldActive&&circleRectIntersect(shieldCircle,eR)){if(e.type==='Lander'||e.type==='Bomber') {
+                        createExplosion(e.worldX, e.y+e.height/2, e.color);
+                        score += SHIELD_MINOR_ENEMY_DESTROY_SCORE;
+                        
+                        if(e.isCarryingHuman && e.targetHuman) {
+                            e.targetHuman.isAbducted = false;
+                            e.targetHuman.abductor = null;
+                            e.targetHuman.isFalling = true;
+                        }
+                        
+                        enemies.splice(i, 1);
+                        
+                        // Add time offset to prevent Tone.js timing errors
+                        if(audioInitialized && synthShieldHit) {
+                            const timeOffset = Tone.now() + (i * 0.01);
+                            synthShieldHit.triggerAttackRelease("A4", "16n", timeOffset);
+                        }
+                    }else {
+                        createParticleEffect(e.worldX, e.y, '#00FFFF', 8, 3, false, 150, 'shield_hit');
+                        
+                        // Add time offset to prevent Tone.js timing errors
+                        if(audioInitialized && synthShieldHit) {
+                            const timeOffset = Tone.now() + (i * 0.01);
+                            synthShieldHit.triggerAttackRelease("E4", "16n", timeOffset);
+                        }
+                    }}else if(!player.isInvulnerable&&rectIntersect(pRect,eR)){if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}playerHit();enemies.splice(i,1);break}}for(let i=humanoids.length-1;i>=0;i--){let h=humanoids[i];if(!h)continue;if(h.isFalling){const hR={x:worldToCanvasX(h.worldX),y:h.y,width:h.width,height:h.height};if(rectIntersect(pRect,hR)){h.isFalling=false;h.y=GROUND_LEVEL-h.height;h.isSafe=true;score+=HUMANOID_RESCUE_POINTS;if(audioInitialized&&synthRescue)synthRescue.triggerAttackRelease("A5","8n");createParticleEffect(player.worldX,player.y,'#00FF00',10,3,false,200,'rescue_flash')}}}}
         function rectIntersect(r1,r2){ /* Minified */ return!(r2.x>r1.x+r1.width||r2.x+r2.width<r1.x||r2.y>r1.y+r1.height||r2.y+r2.height<r1.y);}
         function activateSmartBomb(){ /* Minified */ if(audioInitialized&&synthExplosionNoise)synthExplosionNoise.triggerAttackRelease(.5); /* Use noise for smart bomb */ createExplosion(worldOffsetX+CANVAS_WIDTH/2,CANVAS_HEIGHT/2,'#FFFFFF');for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];const eCX=worldToCanvasX(e.worldX);if(eCX>-e.width&&eCX<CANVAS_WIDTH&&e.y>-e.height&&e.y<CANVAS_HEIGHT){if(e.type !=='Mutant'){createExplosion(e.worldX,e.y+e.height/2,e.color)}else{createParticleEffect(e.worldX,e.y+e.height/2,e.color,15,4)}if(e.isCarryingHuman&&e.targetHuman){e.targetHuman.isAbducted=false;e.targetHuman.abductor=null;e.targetHuman.isFalling=true}enemies.splice(i,1);score+=50}}}
         function deflectFrozenProjectiles(){}
@@ -945,12 +1160,12 @@
             messageOverlay.style.display='flex';
         }
         function checkWaveCompletion(){ 
-            // Count all hostile enemy types including the new Destroyer
+            // Count all hostile enemy types including the new Pulsar
             const activeHostiles = enemies.filter(e => 
                 e.type === 'Lander' || 
                 e.type === 'Mutant' || 
                 e.type === 'Bomber' || 
-                e.type === 'Destroyer'
+                e.type === 'Pulsar'
             ).length;
             
             if (gameRunning && !gameOverState && activeHostiles === 0 && humanoids.length > 0) {
@@ -1088,7 +1303,7 @@
                 eCtx.stroke();
             }
             break;case'Mutant':
-            // Fighter with flat top and dome
+            // Saucer with flat top and dome
             eCtx.fillStyle = e.color;
             
             // Main body - flat-topped pentagon
@@ -1113,7 +1328,7 @@
             const radius = flatTopWidth/2;
             eCtx.arc(centerX, flatTopY, radius, Math.PI, 0, false); // Half circle, open at bottom
             eCtx.stroke();
-            break;case'Destroyer':
+            break;case'Pulsar':
             // Save the current state
             eCtx.save();
             
@@ -1132,18 +1347,18 @@
             eCtx.strokeStyle = 'transparent';
             eCtx.lineWidth = 0;
             
-            // Set color for the Destroyer - use only the base color
+            // Set color for the Pulsar - use only the base color
             eCtx.fillStyle = e.color;
             
             // True barbell shape - small circles at ends with thin connecting line
             
             // Make circles much smaller (1/3 of height)
-            const circleRadius = e.height * 0.33;
+            const pulsarCircleSize = e.height * 0.33;
             const centerY = cY + e.height/2;
             
             // Position circles at the far edges of the width
-            const leftCircleX = cX + circleRadius;
-            const rightCircleX = cX + e.width - circleRadius;
+            const leftCircleX = cX + pulsarCircleSize;
+            const rightCircleX = cX + e.width - pulsarCircleSize;
             
             // Draw thin connecting line between circles
             const lineHeight = e.height * 0.15; // Very thin line
@@ -1151,12 +1366,12 @@
             
             // Draw left circle
             eCtx.beginPath();
-            eCtx.arc(leftCircleX, centerY, circleRadius, 0, Math.PI * 2);
+            eCtx.arc(leftCircleX, centerY, pulsarCircleSize, 0, Math.PI * 2);
             eCtx.fill();
             
             // Draw right circle
             eCtx.beginPath();
-            eCtx.arc(rightCircleX, centerY, circleRadius, 0, Math.PI * 2);
+            eCtx.arc(rightCircleX, centerY, pulsarCircleSize, 0, Math.PI * 2);
             eCtx.fill();
             
             // Restore the context state when done
@@ -1367,8 +1582,86 @@
             eCtx.fill();
             eCtx.restore();
             break;
+            
+        case'circle_attack':
+            // Draw concentric expanding circle attack
+            eCtx.save();
+            
+            // Use stored alpha or default to 1
+            const circleAlpha = e.alpha !== undefined ? e.alpha : 1;
+            
+            // Draw circle based on current radius
+            const circleRadius = e.radius || e.width/2;
+            
+            // Border only with no fill
+            eCtx.beginPath();
+            eCtx.arc(cX, cY, circleRadius, 0, Math.PI * 2);
+            
+            // Use a thicker stroke width for better visibility
+            eCtx.strokeStyle = `rgba(255, 100, 0, ${circleAlpha})`; // Bright orange color
+            eCtx.lineWidth = 3 + (e.ringIndex * 0.5); // Thicker lines for better visibility
+            eCtx.stroke();
+            
+            eCtx.restore();
+            break;
         case'bomb':eCtx.fillStyle=e.color;eCtx.beginPath();eCtx.moveTo(cX+e.width/2,cY);eCtx.lineTo(cX+e.width,cY+e.height/2);eCtx.lineTo(cX+e.width/2,cY+e.height);eCtx.lineTo(cX,cY+e.height/2);eCtx.closePath();eCtx.fill();break;default:eCtx.fillRect(cX,cY,e.width,e.height)}}
-        function drawRadar(){ /* Minified */ radarDiv.innerHTML='';if(!player.worldX&&player.worldX!==0)return;const rS=radarDiv.offsetWidth/PLANET_WIDTH;const rH=radarDiv.offsetHeight;let pRX=player.worldX*rS;let pD=document.createElement('div');pD.className='radar-dot player-dot';pD.style.left=`${pRX}px`;pD.style.top=`${rH/2}px`;radarDiv.appendChild(pD);humanoids.forEach(h=>{if(!h.isAbducted){let hRX=h.worldX*rS;let hD=document.createElement('div');hD.className='radar-dot human-dot';hD.style.left=`${hRX}px`;hD.style.top=`${rH-4}px`;radarDiv.appendChild(hD)}});enemies.forEach(e=>{let eRX=e.worldX*rS;let rTop=e.y/CANVAS_HEIGHT*rH;rTop=clamp(rTop,2,rH-2);let eD=document.createElement('div');eD.className=`radar-dot ${e.type==='Mutant'?'mutant-dot':'enemy-dot'}`;eD.style.left=`${eRX}px`;eD.style.top=`${rTop}px`;radarDiv.appendChild(eD)})}
+        function drawRadar(){ 
+            // Clear radar
+            radarDiv.innerHTML='';
+            if(!player.worldX && player.worldX!==0) return;
+            
+            const rS = radarDiv.offsetWidth / PLANET_WIDTH;
+            const rH = radarDiv.offsetHeight;
+            
+            // Draw player dot
+            let pRX = player.worldX * rS;
+            let pD = document.createElement('div');
+            pD.className = 'radar-dot player-dot';
+            pD.style.left = `${pRX}px`;
+            pD.style.top = `${rH/2}px`;
+            radarDiv.appendChild(pD);
+            
+            // Draw humanoid dots
+            humanoids.forEach(h => {
+                if(!h.isAbducted) {
+                    let hRX = h.worldX * rS;
+                    let hD = document.createElement('div');
+                    hD.className = 'radar-dot human-dot';
+                    hD.style.left = `${hRX}px`;
+                    hD.style.top = `${rH-4}px`;
+                    radarDiv.appendChild(hD);
+                }
+            });
+            
+            // Draw enemy dots
+            enemies.forEach(e => {
+                let eRX = e.worldX * rS;
+                let rTop = e.y / CANVAS_HEIGHT * rH;
+                rTop = clamp(rTop, 2, rH-2);
+                let eD = document.createElement('div');
+                
+                // Set the appropriate class based on enemy type
+                if (e.type === 'Mutant') {
+                    eD.className = 'radar-dot mutant-dot';
+                } else {
+                    // Make abductors carrying humans blink
+                    if (e.isCarryingHuman) {
+                        // Use animation to make it blink - alternate between visible and less visible
+                        // based on the current time
+                        const blinkSpeed = 250; // ms
+                        const isVisible = Math.floor(Date.now() / blinkSpeed) % 2 === 0;
+                        eD.className = 'radar-dot enemy-dot';
+                        eD.style.opacity = isVisible ? '1' : '0.3';
+                    } else {
+                        eD.className = 'radar-dot enemy-dot';
+                    }
+                }
+                
+                eD.style.left = `${eRX}px`;
+                eD.style.top = `${rTop}px`;
+                radarDiv.appendChild(eD);
+            });
+        }
         function updateUI(){ /* Minified */ scoreUI.textContent=score;livesUI.textContent=lives;bombsUI.textContent=smartBombs;waveUI.textContent=currentWave;if(player.shieldEnergy!==undefined){shieldFillUI.style.width=`${player.shieldEnergy/PLAYER_MAX_SHIELD_ENERGY*100}%`}}
         // Track game time and frame timing
         let lastTime = 0;
@@ -1486,28 +1779,28 @@
                 drawSpecificEntity(bomberCtx, mockBomber, centerX, centerY);
             }
             
-            // Draw Destroyer preview - match exactly how it appears in game
-            const destroyerCanvas = document.getElementById('destroyer-preview');
-            if (destroyerCanvas) {
+            // Draw Pulsar preview - match exactly how it appears in game
+            const pulsarCanvas = document.getElementById('pulsar-preview');
+            if (pulsarCanvas) {
                 // Get a fresh context and clear everything
-                const ctx = destroyerCanvas.getContext('2d');
-                ctx.clearRect(0, 0, destroyerCanvas.width, destroyerCanvas.height);
+                const ctx = pulsarCanvas.getContext('2d');
+                ctx.clearRect(0, 0, pulsarCanvas.width, pulsarCanvas.height);
                 
-                // Create a mock destroyer that matches the game entity
-                const mockDestroyer = {
-                    type: 'Destroyer',
-                    width: DESTROYER_WIDTH,
-                    height: DESTROYER_HEIGHT,
+                // Create a mock pulsar that matches the game entity
+                const mockPulsar = {
+                    type: 'Pulsar',
+                    width: PULSAR_WIDTH,
+                    height: PULSAR_HEIGHT,
                     color: '#0088FF'
                 };
                 
                 // Position in the center of the preview
-                const centerX = (destroyerCanvas.width - mockDestroyer.width) / 2;
-                const centerY = (destroyerCanvas.height - mockDestroyer.height) / 2;
+                const centerX = (pulsarCanvas.width - mockPulsar.width) / 2;
+                const centerY = (pulsarCanvas.height - mockPulsar.height) / 2;
                 
                 // Draw using the exact same drawing function as in the game
                 // This ensures it looks identical
-                drawSpecificEntity(ctx, mockDestroyer, centerX, centerY);
+                drawSpecificEntity(ctx, mockPulsar, centerX, centerY);
             }
         }
         
